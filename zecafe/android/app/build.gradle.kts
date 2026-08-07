@@ -5,8 +5,6 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services")
-    id("com.google.firebase.crashlytics")
 }
 
 val keystoreProperties = Properties()
@@ -49,8 +47,13 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            // Debug builds use the default Android debug keystore.
+        }
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release") // or "release" if you have real keystore
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }
