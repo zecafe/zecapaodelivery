@@ -1,0 +1,45 @@
+{
+  "destination": {
+    "id": 1,
+    "slug": "vale-do-capao",
+    "name": "Vale do Capão",
+    "city": "Palmeiras",
+    "state": "BA",
+    "operator": "Zecapão Delivery"
+  },
+  "categories": [
+    {"id":"food","name":"Comer & Beber","icon":"restaurant"},
+    {"id":"markets","name":"Mercados","icon":"shopping_cart"},
+    {"id":"shops","name":"Lojas","icon":"shopping_bag"},
+    {"id":"lodging","name":"Hospedagem","icon":"hotel"},
+    {"id":"experiences","name":"Passeios & Experiências","icon":"landscape"},
+    {"id":"services","name":"Turismo & Serviços","icon":"work"},
+    {"id":"events","name":"Eventos","icon":"confirmation_number"}
+  ],
+  "partners": [
+    {"name":"Comercial Bastos","slug":"comercial-bastos","categories":["markets"],"asset":"assets/partners/comercial_bastos.jpg"},
+    {"name":"Café NuValle","slug":"cafe-nuvalle","categories":["food"],"tags":["Café"],"asset":"assets/partners/cafe_nuvalle.jpg"},
+    {"name":"Frutos","slug":"frutos","categories":["food"],"asset":"assets/partners/frutos.jpg"},
+    {"name":"Garimpo Burger","slug":"garimpo-burger","categories":["food"],"tags":["Hambúrguer"],"asset":"assets/partners/garimpo_burger.jpg"},
+    {"name":"Gatto Sete Bistrô","slug":"gatto-sete-bistro","categories":["food"],"tags":["Bistrô"],"asset":"assets/partners/gatto_sete.jpg"},
+    {"name":"Green","slug":"green","categories":["food"],"asset":"assets/partners/green.jpg"},
+    {"name":"Zecafé","slug":"zecafe","categories":["food"],"tags":["Café"],"asset":"assets/partners/zecafe.jpg"},
+    {"name":"Mandioca Gastrobar","slug":"mandioca-gastrobar","categories":["food"],"tags":["Gastrobar"],"asset":"assets/partners/mandioca_gastrobar.jpg"},
+    {"name":"Ôxe Restô","slug":"oxe-resto","categories":["food"],"tags":["Restaurante"],"asset":"assets/partners/oxe_resto.jpg"},
+    {"name":"Paulistano Capão","slug":"paulistano-capao","categories":["food"],"tags":["Restaurante"],"asset":"assets/partners/paulistano_capao.jpg"},
+    {"name":"Pico do Açaí","slug":"pico-do-acai","categories":["food"],"tags":["Açaí","Lanches"],"asset":"assets/partners/pico_do_acai.jpg"},
+    {"name":"Pizza Lab","slug":"pizza-lab","categories":["food"],"tags":["Pizza"],"asset":"assets/partners/pizza_lab.jpg"},
+    {"name":"Princesas das Empadas","slug":"princesas-das-empadas","categories":["food"],"tags":["Empadas","Lanches"],"asset":"assets/partners/princesas_das_empadas.jpg"},
+    {"name":"Voraz Sanduicheria","slug":"voraz-sanduicheria","categories":["food"],"tags":["Sanduíches"],"asset":"assets/partners/voraz_sanduicheria.jpg"}
+  ],
+  "events": [
+    {
+      "name":"Capão Reggae Vale",
+      "slug":"capao-reggae-vale",
+      "category":"events",
+      "status":"campaign_asset",
+      "asset":"assets/events/capao_reggae_vale.jpg",
+      "note":"Banner recebido como mídia de campanha. Data, chamada, preço e link devem ser campos independentes no painel para permitir atualização sem publicar novo app."
+    }
+  ]
+}
