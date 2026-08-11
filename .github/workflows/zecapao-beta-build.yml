@@ -28,20 +28,33 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Validate branding assets
+        run: |
+          test -f zecapao_beta/assets/branding/zecapao_app_icon.png
+          test -f zecapao_beta/assets/branding/zecafe.jpg
+          test -f zecapao_beta/assets/branding/garimpo_burger.jpg
+          echo 'Branding assets encontrados.'
+
       - name: Create clean Android project
         run: |
           rm -rf /tmp/zecapao_build
           flutter create /tmp/zecapao_build --platforms=android --org com.zecapao.delivery --project-name zecapao_beta
 
-      - name: Apply Zecapao Beta source
+      - name: Apply Zecapao Beta source and branding
         run: |
           cp zecapao_beta/pubspec.yaml /tmp/zecapao_build/pubspec.yaml
           cp zecapao_beta/lib/main.dart /tmp/zecapao_build/lib/main.dart
+          mkdir -p /tmp/zecapao_build/assets
+          cp -R zecapao_beta/assets/branding /tmp/zecapao_build/assets/branding
           rm -rf /tmp/zecapao_build/test
 
       - name: Install dependencies
         working-directory: /tmp/zecapao_build
         run: flutter pub get
+
+      - name: Generate official Android icon
+        working-directory: /tmp/zecapao_build
+        run: dart run flutter_launcher_icons
 
       - name: Analyze Dart source
         working-directory: /tmp/zecapao_build
@@ -54,7 +67,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-beta-0.2.2-apk
+          name: zecapao-beta-0.3-branding-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
