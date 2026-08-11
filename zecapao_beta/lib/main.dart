@@ -16,25 +16,25 @@ class Partner {
 }
 
 const partners = <Partner>[
-  Partner('Zecafé', 'Cafés • Doces • Experiências', 'assets/branding/zecafe.jpg'),
-  Partner('Café DuValle', 'Café • Brunch', 'assets/branding/cafe_duvalle.jpg'),
-  Partner('Frutos', 'Sucos • Focaccias • Toasts', 'assets/branding/frutos.jpg'),
-  Partner('Garimpo Burger', 'Hambúrguer artesanal', 'assets/branding/garimpo_burger.jpg'),
-  Partner('Gatto Sete Bistrô', 'Bistrô • Gastronomia', 'assets/branding/gatto_sete.jpg'),
-  Partner('Green', 'Gastronomia', 'assets/branding/green.jpg'),
-  Partner('Mandioca Gastrobar', 'Restaurante • Bar', 'assets/branding/mandioca.jpg'),
-  Partner('Ôxe Restô', 'Restaurante', 'assets/branding/oxe.jpg'),
-  Partner('Paulistano Capão', 'Restaurante', 'assets/branding/paulistano.jpg'),
-  Partner('Pico do Açaí', 'Açaí • Lanches', 'assets/branding/pico_acai.jpg'),
-  Partner('Pizza Lab', 'Pizza • Music & Drinks', 'assets/branding/pizza_lab.jpg'),
-  Partner('Comercial Bastos', 'Mercado • Conveniência', 'assets/branding/comercial_bastos.jpg'),
-  Partner('Alma Bistrô', 'Bistrô', 'assets/branding/alma.jpg'),
-  Partner('Dona Beli', 'Comida caseira', 'assets/branding/dona_beli.jpg'),
-  Partner('Budha Restaurante', 'Restaurante', 'assets/branding/budha.jpg'),
-  Partner('Cabeça de Gelo', 'Turismo de aventura • Sucos', 'assets/branding/cabeca_de_gelo.jpg'),
-  Partner('Capão Grande', 'Pizzaria integral', 'assets/branding/capao_grande.jpg'),
-  Partner('CBD', 'Loja local', 'assets/branding/cbd.jpg'),
-  Partner('Charruá Restaurante', 'Restaurante', 'assets/branding/charrua.jpg'),
+  Partner('Zecafé', 'Cafés • Doces • Experiências', 'Ativos/Marca/zecafe.jpg'),
+  Partner('Café DuValle', 'Café • Brunch', 'Ativos/Marca/cafe_duvalle.jpg'),
+  Partner('Frutos', 'Sucos • Focaccias • Toasts', 'Ativos/Marca/frutos.jpg'),
+  Partner('Garimpo Burger', 'Hambúrguer artesanal', 'Ativos/Marca/garimpo_burger.jpg'),
+  Partner('Gatto Sete Bistrô', 'Bistrô • Gastronomia', 'Ativos/Marca/gatto_sete.jpg'),
+  Partner('Green', 'Gastronomia', 'Ativos/Marca/green.jpg'),
+  Partner('Mandioca Gastrobar', 'Restaurante • Bar', 'Ativos/Marca/mandioca.jpg'),
+  Partner('Ôxe Restô', 'Restaurante', 'Ativos/Marca/oxe.jpg'),
+  Partner('Paulistano Capão', 'Restaurante', 'Ativos/Marca/paulistano.jpg'),
+  Partner('Pico do Açaí', 'Açaí • Lanches', 'Ativos/Marca/pico_acai.jpg'),
+  Partner('Pizza Lab', 'Pizza • Music & Drinks', 'Ativos/Marca/pizza_lab.jpg'),
+  Partner('Comercial Bastos', 'Mercado • Conveniência', 'Ativos/Marca/comercial_bastos.jpg'),
+  Partner('Alma Bistrô', 'Bistrô', 'Ativos/Marca/alma.jpg'),
+  Partner('Dona Beli', 'Comida caseira', 'Ativos/Marca/dona_beli.jpg'),
+  Partner('Budha Restaurante', 'Restaurante', 'Ativos/Marca/budha.jpg'),
+  Partner('Cabeça de Gelo', 'Turismo de aventura • Sucos', 'Ativos/Marca/cabeca_de_gelo.jpg'),
+  Partner('Capão Grande', 'Pizzaria integral', 'Ativos/Marca/capao_grande.jpg'),
+  Partner('CBD', 'Loja local', 'Ativos/Marca/cbd.jpg'),
+  Partner('Charruá Restaurante', 'Restaurante', 'Ativos/Marca/charrua.jpg'),
 ];
 
 class ZecapaoApp extends StatelessWidget {
@@ -66,7 +66,7 @@ class HomePage extends StatelessWidget {
     ]),
     body: SafeArea(child: ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 24), children: [
       Row(children: [
-        ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.asset('assets/branding/zecapao_app_icon.png', width: 54, height: 54, fit: BoxFit.cover)),
+        ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.asset('Ativos/Marca/zecapao_app_icon.png', width: 54, height: 54, fit: BoxFit.cover)),
         const SizedBox(width: 12),
         const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Salve, capoeira!', style: TextStyle(color: Colors.black54)), SizedBox(height: 2), Row(children: [Icon(Icons.location_on, color: red, size: 18), SizedBox(width: 4), Text('Vale do Capão • BA', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900))])])),
         const Icon(Icons.notifications_none),
@@ -76,7 +76,7 @@ class HomePage extends StatelessWidget {
       const SizedBox(height: 16),
       Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(gradient: const LinearGradient(colors: [red, Color(0xFFB8120A)]), borderRadius: BorderRadius.circular(28)), child: Row(children: [
         const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Pediu.\nChegou.', style: TextStyle(color: Colors.white, fontSize: 34, height: .95, fontWeight: FontWeight.w900)), SizedBox(height: 10), Text('O Vale inteiro na sua mão.', style: TextStyle(color: cream, fontWeight: FontWeight.w700))])),
-        ClipRRect(borderRadius: BorderRadius.circular(20), child: Image.asset('assets/branding/zecapao_app_icon.png', width: 105, height: 105, fit: BoxFit.cover)),
+        ClipRRect(borderRadius: BorderRadius.circular(20), child: Image.asset('Ativos/Marca/zecapao_app_icon.png', width: 105, height: 105, fit: BoxFit.cover)),
       ])),
       const SizedBox(height: 24),
       const Text('Categorias', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
