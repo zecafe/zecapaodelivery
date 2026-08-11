@@ -1,7 +1,7 @@
 name: zecapao_beta
 description: Zecapao Delivery Beta 0.3 Branding
 publish_to: 'none'
-version: 0.3.0+3
+version: 0.3.1+4
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
@@ -19,11 +19,11 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/branding/
+    - Ativos/Marca/
 
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: assets/branding/zecapao_app_icon.png
+  image_path: Ativos/Marca/zecapao_app_icon.png
   adaptive_icon_background: '#E2231A'
-  adaptive_icon_foreground: assets/branding/zecapao_app_icon.png
+  adaptive_icon_foreground: Ativos/Marca/zecapao_app_icon.png
