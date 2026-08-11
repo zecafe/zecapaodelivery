@@ -1,0 +1,55 @@
+name: Zecapao Beta APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'zecapao_beta/**'
+      - '.github/workflows/zecapao-beta-build.yml'
+
+jobs:
+  build-beta-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.9'
+          channel: stable
+          cache: true
+
+      - name: Create clean Android project
+        run: |
+          rm -rf /tmp/zecapao_build
+          flutter create /tmp/zecapao_build --platforms=android --org com.zecapao.delivery --project-name zecapao_beta
+
+      - name: Apply Zecapao Beta source
+        run: |
+          cp zecapao_beta/pubspec.yaml /tmp/zecapao_build/pubspec.yaml
+          cp zecapao_beta/lib/main.dart /tmp/zecapao_build/lib/main.dart
+
+      - name: Install dependencies
+        working-directory: /tmp/zecapao_build
+        run: flutter pub get
+
+      - name: Build APK
+        working-directory: /tmp/zecapao_build
+        run: flutter build apk --debug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zecapao-beta-0.1-apk
+          path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
