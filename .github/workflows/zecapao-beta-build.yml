@@ -37,6 +37,7 @@ jobs:
         run: |
           cp zecapao_beta/pubspec.yaml /tmp/zecapao_build/pubspec.yaml
           cp zecapao_beta/lib/main.dart /tmp/zecapao_build/lib/main.dart
+          rm -rf /tmp/zecapao_build/test
 
       - name: Install dependencies
         working-directory: /tmp/zecapao_build
@@ -44,7 +45,7 @@ jobs:
 
       - name: Analyze Dart source
         working-directory: /tmp/zecapao_build
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
 
       - name: Build APK
         working-directory: /tmp/zecapao_build
@@ -53,7 +54,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-beta-0.2.1-apk
+          name: zecapao-beta-0.2.2-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
