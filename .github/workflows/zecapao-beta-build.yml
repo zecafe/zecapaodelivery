@@ -42,6 +42,10 @@ jobs:
         working-directory: /tmp/zecapao_build
         run: flutter pub get
 
+      - name: Analyze Dart source
+        working-directory: /tmp/zecapao_build
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
       - name: Build APK
         working-directory: /tmp/zecapao_build
         run: flutter build apk --debug
@@ -49,7 +53,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-beta-0.2-apk
+          name: zecapao-beta-0.2.1-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
