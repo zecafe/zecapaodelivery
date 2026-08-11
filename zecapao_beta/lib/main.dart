@@ -57,7 +57,7 @@ class HomePage extends StatelessWidget {
   const HomePage({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-    bottomNavigationBar: const NavigationBar(destinations: [
+    bottomNavigationBar: NavigationBar(destinations: const [
       NavigationDestination(icon: Icon(Icons.home), label: 'Início'),
       NavigationDestination(icon: Icon(Icons.search), label: 'Buscar'),
       NavigationDestination(icon: Icon(Icons.receipt_long), label: 'Pedidos'),
