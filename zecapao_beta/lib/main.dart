@@ -9,6 +9,8 @@ const yellow = Color(0xFFFFC107);
 const green = Color(0xFF1F5E3A);
 const cream = Color(0xFFF2E6C9);
 
+String money(double value) => 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
+
 class Partner {
   final String name;
   final String subtitle;
@@ -54,8 +56,6 @@ const menu = <Product>[
   Product('Bebida da casa', 'Opção refrescante', 12),
 ];
 
-String money(double value) => 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
-
 class ZecapaoApp extends StatelessWidget {
   const ZecapaoApp({super.key});
 
@@ -86,27 +86,29 @@ class SignupPage extends StatefulWidget {
 }
 
 class _SignupPageState extends State<SignupPage> {
-  final nameController = TextEditingController();
-  final phoneController = TextEditingController();
-  final emailController = TextEditingController();
-  bool acceptedTerms = false;
+  final name = TextEditingController();
+  final phone = TextEditingController();
+  final email = TextEditingController();
+  bool terms = false;
 
   @override
   void dispose() {
-    nameController.dispose();
-    phoneController.dispose();
-    emailController.dispose();
+    name.dispose();
+    phone.dispose();
+    email.dispose();
     super.dispose();
   }
 
-  void enterApp() {
-    final name = nameController.text.trim().isEmpty
-        ? 'capoeira'
-        : nameController.text.trim();
-
+  void enter() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => HomePage(user: name)),
+      MaterialPageRoute(
+        builder: (_) => MainShell(
+          userName: name.text.trim().isEmpty ? 'capoeira' : name.text.trim(),
+          phone: phone.text.trim(),
+          email: email.text.trim(),
+        ),
+      ),
     );
   }
 
@@ -121,11 +123,11 @@ class _SignupPageState extends State<SignupPage> {
             Center(
               child: Image.asset(
                 'Ativos/Marca/zecapao_app_icon.png',
-                height: 118,
+                height: 108,
                 fit: BoxFit.contain,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
             const Text(
               'Chegue mais. 🌵',
               style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900),
@@ -135,18 +137,18 @@ class _SignupPageState extends State<SignupPage> {
               'Um cadastro rapidinho e o Vale inteiro fica na sua mão.',
               style: TextStyle(fontSize: 16, color: Colors.black54, height: 1.4),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 26),
             TextField(
-              controller: nameController,
+              controller: name,
               decoration: const InputDecoration(
                 labelText: 'Como podemos te chamar?',
                 prefixIcon: Icon(Icons.person_outline),
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             TextField(
-              controller: phoneController,
+              controller: phone,
               keyboardType: TextInputType.phone,
               decoration: const InputDecoration(
                 labelText: 'WhatsApp',
@@ -154,9 +156,9 @@ class _SignupPageState extends State<SignupPage> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             TextField(
-              controller: emailController,
+              controller: email,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(
                 labelText: 'E-mail (opcional)',
@@ -166,30 +168,25 @@ class _SignupPageState extends State<SignupPage> {
             ),
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
-              value: acceptedTerms,
-              onChanged: (value) {
-                setState(() => acceptedTerms = value ?? false);
-              },
+              value: terms,
+              onChanged: (value) => setState(() => terms = value ?? false),
               title: const Text(
                 'Aceito os termos e a política de privacidade',
                 style: TextStyle(fontSize: 13),
               ),
             ),
-            const SizedBox(height: 8),
             FilledButton(
-              onPressed: acceptedTerms ? enterApp : null,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(56),
-              ),
+              onPressed: terms ? enter : null,
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
               child: const Text(
                 'ENTRAR NO ZÉ CAPÃO',
                 style: TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             const Center(
               child: Text(
-                'Beta 0.4 • Vale do Capão, Bahia',
+                'Beta 0.5 • Vale do Capão, Bahia',
                 style: TextStyle(color: Colors.black38, fontSize: 12),
               ),
             ),
@@ -200,147 +197,214 @@ class _SignupPageState extends State<SignupPage> {
   }
 }
 
-class HomePage extends StatelessWidget {
-  final String user;
+class MainShell extends StatefulWidget {
+  final String userName;
+  final String phone;
+  final String email;
 
-  const HomePage({super.key, required this.user});
+  const MainShell({
+    super.key,
+    required this.userName,
+    required this.phone,
+    required this.email,
+  });
+
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  int index = 0;
+  final Set<String> favorites = {};
+  final List<String> orders = [];
+
+  void toggleFavorite(String name) {
+    setState(() {
+      favorites.contains(name) ? favorites.remove(name) : favorites.add(name);
+    });
+  }
+
+  void addOrder(String description) {
+    setState(() {
+      orders.insert(0, description);
+      index = 2;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      bottomNavigationBar: NavigationBar(
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: 'Início'),
-          NavigationDestination(icon: Icon(Icons.search), label: 'Buscar'),
-          NavigationDestination(icon: Icon(Icons.receipt_long), label: 'Pedidos'),
-          NavigationDestination(icon: Icon(Icons.event), label: 'Eventos'),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Perfil'),
-        ],
+    final pages = [
+      HomeTab(
+        userName: widget.userName,
+        favorites: favorites,
+        toggleFavorite: toggleFavorite,
       ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-          children: [
-            _header(),
-            const SizedBox(height: 16),
-            _searchBox(),
-            const SizedBox(height: 16),
-            _hero(),
-            const SizedBox(height: 24),
-            const Text(
-              'Categorias',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 12),
-            const Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                CategoryChip('Comida', Icons.restaurant),
-                CategoryChip('Bebidas', Icons.local_bar),
-                CategoryChip('Mercado', Icons.shopping_basket),
-                CategoryChip('Cafés', Icons.coffee),
-                CategoryChip('Eventos', Icons.event),
-                CategoryChip('Pousadas', Icons.bed),
-                CategoryChip('Experiências', Icons.landscape),
-              ],
-            ),
-            const SizedBox(height: 26),
-            const Text(
-              'Parceiros do Capão',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 12),
-            ...partners.map(
-              (partner) => PartnerCard(partner: partner),
-            ),
-          ],
-        ),
+      SearchTab(
+        favorites: favorites,
+        toggleFavorite: toggleFavorite,
+      ),
+      OrdersTab(orders: orders),
+      const EventsTab(),
+      ProfileTab(
+        userName: widget.userName,
+        phone: widget.phone,
+        email: widget.email,
+        favorites: favorites,
+      ),
+    ];
+
+    return Scaffold(
+      body: IndexedStack(index: index, children: pages),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: (value) => setState(() => index = value),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Início'),
+          NavigationDestination(icon: Icon(Icons.search), label: 'Buscar'),
+          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Pedidos'),
+          NavigationDestination(icon: Icon(Icons.event_outlined), label: 'Eventos'),
+          NavigationDestination(icon: Icon(Icons.person_outline), label: 'Perfil'),
+        ],
       ),
     );
   }
+}
 
-  Widget _header() {
-    return Row(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Image.asset(
-            'Ativos/Marca/zecapao_app_icon.png',
-            width: 54,
-            height: 54,
-            fit: BoxFit.cover,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+class HomeTab extends StatelessWidget {
+  final String userName;
+  final Set<String> favorites;
+  final ValueChanged<String> toggleFavorite;
+
+  const HomeTab({
+    super.key,
+    required this.userName,
+    required this.favorites,
+    required this.toggleFavorite,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+        children: [
+          Row(
             children: [
-              Text('Salve, $user!', style: const TextStyle(color: Colors.black54)),
-              const Row(
-                children: [
-                  Icon(Icons.location_on, color: red, size: 18),
-                  SizedBox(width: 4),
-                  Text(
-                    'Vale do Capão • BA',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-                  ),
-                ],
+              Image.asset('Ativos/Marca/zecapao_app_icon.png', width: 52, height: 52, fit: BoxFit.contain),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Salve, $userName!', style: const TextStyle(color: Colors.black54)),
+                    const Text(
+                      'Vale do Capão • BA',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                    ),
+                  ],
+                ),
               ),
+              const Icon(Icons.notifications_none),
             ],
           ),
-        ),
-        const Icon(Icons.notifications_none),
-      ],
-    );
-  }
-
-  Widget _searchBox() {
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.search, color: Colors.black45),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'O que você quer pedir hoje?',
-              style: TextStyle(color: Colors.black45),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(color: red, borderRadius: BorderRadius.circular(28)),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Pediu. Chegou.',
+                  style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+                ),
+                SizedBox(height: 6),
+                Text('O Vale inteiro na sua mão.', style: TextStyle(color: cream, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+          const Text('Categorias', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 12),
+          const Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              CategoryChip('Comida', Icons.restaurant),
+              CategoryChip('Bebidas', Icons.local_bar),
+              CategoryChip('Mercado', Icons.shopping_basket),
+              CategoryChip('Cafés', Icons.coffee),
+              CategoryChip('Eventos', Icons.event),
+              CategoryChip('Pousadas', Icons.bed),
+              CategoryChip('Experiências', Icons.landscape),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const Text('Parceiros do Capão', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 10),
+          ...partners.map(
+            (partner) => PartnerCard(
+              partner: partner,
+              favorite: favorites.contains(partner.name),
+              onFavorite: () => toggleFavorite(partner.name),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _hero() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: red,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+class SearchTab extends StatefulWidget {
+  final Set<String> favorites;
+  final ValueChanged<String> toggleFavorite;
+
+  const SearchTab({
+    super.key,
+    required this.favorites,
+    required this.toggleFavorite,
+  });
+
+  @override
+  State<SearchTab> createState() => _SearchTabState();
+}
+
+class _SearchTabState extends State<SearchTab> {
+  String query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = partners.where((partner) {
+      final text = '${partner.name} ${partner.subtitle}'.toLowerCase();
+      return text.contains(query.toLowerCase());
+    }).toList();
+
+    return SafeArea(
+      child: Column(
         children: [
-          Text(
-            'Pediu. Chegou.',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              autofocus: false,
+              onChanged: (value) => setState(() => query = value),
+              decoration: const InputDecoration(
+                hintText: 'Buscar restaurante, café, mercado...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
             ),
           ),
-          SizedBox(height: 6),
-          Text(
-            'O Vale inteiro na sua mão.',
-            style: TextStyle(color: cream, fontWeight: FontWeight.w700),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: filtered.map((partner) {
+                return PartnerCard(
+                  partner: partner,
+                  favorite: widget.favorites.contains(partner.name),
+                  onFavorite: () => widget.toggleFavorite(partner.name),
+                );
+              }).toList(),
+            ),
           ),
         ],
       ),
@@ -360,17 +424,9 @@ class CategoryChip extends StatelessWidget {
       width: 78,
       child: Column(
         children: [
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: cream,
-            child: Icon(icon, color: red),
-          ),
+          CircleAvatar(radius: 26, backgroundColor: cream, child: Icon(icon, color: red)),
           const SizedBox(height: 6),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
-          ),
+          Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
         ],
       ),
     );
@@ -379,8 +435,15 @@ class CategoryChip extends StatelessWidget {
 
 class PartnerCard extends StatelessWidget {
   final Partner partner;
+  final bool favorite;
+  final VoidCallback onFavorite;
 
-  const PartnerCard({super.key, required this.partner});
+  const PartnerCard({
+    super.key,
+    required this.partner,
+    required this.favorite,
+    required this.onFavorite,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -388,24 +451,18 @@ class PartnerCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         contentPadding: const EdgeInsets.all(10),
-        leading: SizedBox(
-          width: 64,
-          height: 64,
-          child: Image.asset(partner.logo, fit: BoxFit.contain),
-        ),
-        title: Text(
-          partner.name,
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
+        leading: SizedBox(width: 62, height: 62, child: Image.asset(partner.logo, fit: BoxFit.contain)),
+        title: Text(partner.name, style: const TextStyle(fontWeight: FontWeight.w900)),
         subtitle: Text('${partner.subtitle}\n25–40 min • Entrega'),
         isThreeLine: true,
-        trailing: const Icon(Icons.chevron_right),
+        trailing: IconButton(
+          onPressed: onFavorite,
+          icon: Icon(favorite ? Icons.favorite : Icons.favorite_border, color: favorite ? red : null),
+        ),
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => PartnerPage(partner: partner),
-            ),
+            MaterialPageRoute(builder: (_) => PartnerPage(partner: partner)),
           );
         },
       ),
@@ -423,25 +480,26 @@ class PartnerPage extends StatefulWidget {
 }
 
 class _PartnerPageState extends State<PartnerPage> {
-  final List<Product> cart = [];
+  final Map<Product, int> cart = {};
 
-  double get total {
-    return cart.fold<double>(0, (sum, product) => sum + product.price);
+  int get itemCount => cart.values.fold(0, (sum, quantity) => sum + quantity);
+
+  double get subtotal {
+    double total = 0;
+    cart.forEach((product, quantity) {
+      total += product.price * quantity;
+    });
+    return total;
   }
 
-  void addToCart(Product product) {
-    setState(() => cart.add(product));
+  void add(Product product) {
+    setState(() => cart[product] = (cart[product] ?? 0) + 1);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.partner.name,
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
-      ),
+      appBar: AppBar(title: Text(widget.partner.name, style: const TextStyle(fontWeight: FontWeight.w900))),
       bottomNavigationBar: cart.isEmpty
           ? null
           : SafeArea(
@@ -452,16 +510,15 @@ class _PartnerPageState extends State<PartnerPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => CartPage(items: List<Product>.from(cart)),
+                        builder: (_) => CartPage(
+                          partner: widget.partner,
+                          initialCart: Map<Product, int>.from(cart),
+                        ),
                       ),
                     );
                   },
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(54),
-                  ),
-                  child: Text(
-                    'VER CARRINHO • ${cart.length} item(ns) • ${money(total)}',
-                  ),
+                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
+                  child: Text('VER CARRINHO • $itemCount item(ns) • ${money(subtotal)}'),
                 ),
               ),
             ),
@@ -471,42 +528,42 @@ class _PartnerPageState extends State<PartnerPage> {
           Container(
             height: 160,
             padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-            ),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
             child: Image.asset(widget.partner.logo, fit: BoxFit.contain),
           ),
           const SizedBox(height: 18),
-          Text(
-            widget.partner.name,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
-          ),
+          Text(widget.partner.name, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
           Text(widget.partner.subtitle, style: const TextStyle(color: Colors.black54)),
           const SizedBox(height: 8),
           const Row(
             children: [
               Icon(Icons.star, color: yellow, size: 18),
-              Text(
-                ' 4,8  •  25–40 min  •  Entrega',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
+              Text(' 4,8  •  25–40 min  •  Entrega', style: TextStyle(fontWeight: FontWeight.w700)),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 22),
+          const Text('Cardápio', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 6),
           const Text(
-            'Cardápio',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
-          ),
-          const Text(
-            'Fotos reais dos produtos entram no próximo lote de mídia.',
+            'A estrutura já está pronta para receber fotos reais e itens específicos de cada parceiro.',
             style: TextStyle(color: Colors.black45, fontSize: 12),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           ...menu.map(
-            (product) => ProductCard(
-              product: product,
-              onAdd: () => addToCart(product),
+            (product) => Card(
+              child: ListTile(
+                contentPadding: const EdgeInsets.all(12),
+                leading: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.restaurant_menu, color: red, size: 30),
+                ),
+                title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.w900)),
+                subtitle: Text('${product.description}\n${money(product.price)}'),
+                isThreeLine: true,
+                trailing: IconButton.filled(onPressed: () => add(product), icon: const Icon(Icons.add)),
+              ),
             ),
           ),
         ],
@@ -515,136 +572,158 @@ class _PartnerPageState extends State<PartnerPage> {
   }
 }
 
-class ProductCard extends StatelessWidget {
-  final Product product;
-  final VoidCallback onAdd;
-
-  const ProductCard({super.key, required this.product, required this.onAdd});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(12),
-        leading: Container(
-          width: 68,
-          height: 68,
-          decoration: BoxDecoration(
-            color: cream,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.restaurant_menu, color: red, size: 30),
-        ),
-        title: Text(
-          product.name,
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
-        subtitle: Text('${product.description}\n${money(product.price)}'),
-        isThreeLine: true,
-        trailing: IconButton.filled(
-          onPressed: onAdd,
-          icon: const Icon(Icons.add),
-        ),
-      ),
-    );
-  }
-}
-
 class CartPage extends StatefulWidget {
-  final List<Product> items;
+  final Partner partner;
+  final Map<Product, int> initialCart;
 
-  const CartPage({super.key, required this.items});
+  const CartPage({
+    super.key,
+    required this.partner,
+    required this.initialCart,
+  });
 
   @override
   State<CartPage> createState() => _CartPageState();
 }
 
 class _CartPageState extends State<CartPage> {
-  static const deliveryFee = 7.0;
+  late Map<Product, int> cart;
+  String payment = 'Pix';
+  final address = TextEditingController();
+  final notes = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    cart = Map<Product, int>.from(widget.initialCart);
+  }
+
+  @override
+  void dispose() {
+    address.dispose();
+    notes.dispose();
+    super.dispose();
+  }
 
   double get subtotal {
-    return widget.items.fold<double>(0, (sum, product) => sum + product.price);
+    double total = 0;
+    cart.forEach((product, quantity) {
+      total += product.price * quantity;
+    });
+    return total;
+  }
+
+  void change(Product product, int delta) {
+    setState(() {
+      final next = (cart[product] ?? 0) + delta;
+      if (next <= 0) {
+        cart.remove(product);
+      } else {
+        cart[product] = next;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    const deliveryFee = 7.0;
     final total = subtotal + deliveryFee;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Seu carrinho',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Seu carrinho', style: TextStyle(fontWeight: FontWeight.w900))),
       body: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-          for (var i = 0; i < widget.items.length; i++)
-            ListTile(
-              title: Text(widget.items[i].name),
-              subtitle: Text(money(widget.items[i].price)),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () {
-                  setState(() => widget.items.removeAt(i));
-                },
+          ...cart.entries.map((entry) {
+            return Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(entry.key.name, style: const TextStyle(fontWeight: FontWeight.w900)),
+                          Text(money(entry.key.price)),
+                        ],
+                      ),
+                    ),
+                    IconButton(onPressed: () => change(entry.key, -1), icon: const Icon(Icons.remove_circle_outline)),
+                    Text('${entry.value}', style: const TextStyle(fontWeight: FontWeight.w900)),
+                    IconButton(onPressed: () => change(entry.key, 1), icon: const Icon(Icons.add_circle_outline)),
+                  ],
+                ),
               ),
-            ),
-          const Divider(),
-          ListTile(
-            title: const Text('Subtotal'),
-            trailing: Text(money(subtotal)),
-          ),
-          const ListTile(
-            title: Text('Entrega'),
-            trailing: Text('R\$ 7,00'),
-          ),
-          ListTile(
-            title: const Text(
-              'Total',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-            ),
-            trailing: Text(
-              money(total),
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-            ),
-          ),
-          const SizedBox(height: 14),
-          const TextField(
-            decoration: InputDecoration(
+            );
+          }),
+          const SizedBox(height: 10),
+          TextField(
+            controller: address,
+            decoration: const InputDecoration(
               labelText: 'Endereço / pousada / referência',
               prefixIcon: Icon(Icons.location_on_outlined),
               border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
-          const TextField(
-            decoration: InputDecoration(
+          TextField(
+            controller: notes,
+            maxLines: 2,
+            decoration: const InputDecoration(
               labelText: 'Observações do pedido',
               prefixIcon: Icon(Icons.notes),
               border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 18),
+          const Text('Forma de pagamento', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          RadioListTile<String>(
+            value: 'Pix',
+            groupValue: payment,
+            title: const Text('Pix'),
+            secondary: const Icon(Icons.pix),
+            onChanged: (value) => setState(() => payment = value ?? 'Pix'),
+          ),
+          RadioListTile<String>(
+            value: 'Cartão na entrega',
+            groupValue: payment,
+            title: const Text('Cartão na entrega'),
+            secondary: const Icon(Icons.credit_card),
+            onChanged: (value) => setState(() => payment = value ?? 'Cartão na entrega'),
+          ),
+          RadioListTile<String>(
+            value: 'Dinheiro',
+            groupValue: payment,
+            title: const Text('Dinheiro'),
+            secondary: const Icon(Icons.payments_outlined),
+            onChanged: (value) => setState(() => payment = value ?? 'Dinheiro'),
+          ),
+          const Divider(),
+          ListTile(title: const Text('Subtotal'), trailing: Text(money(subtotal))),
+          const ListTile(title: Text('Entrega'), trailing: Text('R\$ 7,00')),
+          ListTile(
+            title: const Text('Total', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+            trailing: Text(money(total), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+          ),
+          const SizedBox(height: 12),
           FilledButton(
-            onPressed: widget.items.isEmpty
+            onPressed: cart.isEmpty
                 ? null
                 : () {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => OrderSuccess(total: total),
+                        builder: (_) => OrderSuccess(
+                          partner: widget.partner.name,
+                          total: total,
+                          payment: payment,
+                        ),
                       ),
                     );
                   },
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(56),
-            ),
-            child: const Text(
-              'CONFIRMAR PEDIDO',
-              style: TextStyle(fontWeight: FontWeight.w900),
-            ),
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+            child: const Text('CONFIRMAR PEDIDO', style: TextStyle(fontWeight: FontWeight.w900)),
           ),
         ],
       ),
@@ -653,9 +732,16 @@ class _CartPageState extends State<CartPage> {
 }
 
 class OrderSuccess extends StatelessWidget {
+  final String partner;
   final double total;
+  final String payment;
 
-  const OrderSuccess({super.key, required this.total});
+  const OrderSuccess({
+    super.key,
+    required this.partner,
+    required this.total,
+    required this.payment,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -667,41 +753,139 @@ class OrderSuccess extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const CircleAvatar(
-                  radius: 42,
-                  backgroundColor: green,
-                  child: Icon(Icons.check, color: Colors.white, size: 46),
-                ),
+                const CircleAvatar(radius: 42, backgroundColor: green, child: Icon(Icons.check, color: Colors.white, size: 46)),
                 const SizedBox(height: 22),
-                const Text(
-                  'Pedido recebido!',
-                  style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900),
-                ),
+                const Text('Pedido recebido!', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 8),
-                Text('Total ${money(total)}', style: const TextStyle(fontSize: 18)),
-                const SizedBox(height: 8),
-                const Text(
-                  'Agora o Zé coloca o pedido na trilha. Você acompanha cada etapa por aqui.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.black54, height: 1.5),
-                ),
-                const SizedBox(height: 24),
+                Text(partner, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                Text('${money(total)} • $payment'),
+                const SizedBox(height: 22),
+                const OrderStep(icon: Icons.receipt_long, text: 'Pedido recebido', active: true),
+                const OrderStep(icon: Icons.restaurant, text: 'Em preparação', active: false),
+                const OrderStep(icon: Icons.delivery_dining, text: 'Saiu para entrega', active: false),
+                const OrderStep(icon: Icons.home, text: 'Entregue', active: false),
+                const SizedBox(height: 22),
                 FilledButton(
-                  onPressed: () {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const HomePage(user: 'capoeira'),
-                      ),
-                      (route) => false,
-                    );
-                  },
-                  child: const Text('VOLTAR AO INÍCIO'),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('VOLTAR AO PARCEIRO'),
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class OrderStep extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final bool active;
+
+  const OrderStep({super.key, required this.icon, required this.text, required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      dense: true,
+      leading: CircleAvatar(
+        backgroundColor: active ? green : Colors.black12,
+        child: Icon(icon, color: active ? Colors.white : Colors.black45),
+      ),
+      title: Text(text, style: TextStyle(fontWeight: active ? FontWeight.w900 : FontWeight.w500)),
+    );
+  }
+}
+
+class OrdersTab extends StatelessWidget {
+  final List<String> orders;
+
+  const OrdersTab({super.key, required this.orders});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Pedidos', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 14),
+            Expanded(
+              child: orders.isEmpty
+                  ? const Center(child: Text('Seus próximos pedidos aparecerão aqui.', style: TextStyle(color: Colors.black45)))
+                  : ListView(children: orders.map((order) => ListTile(leading: const Icon(Icons.receipt_long), title: Text(order))).toList()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class EventsTab extends StatelessWidget {
+  const EventsTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const Text('Eventos', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(color: const Color(0xFF191919), borderRadius: BorderRadius.circular(28)),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('CAPÃO REGGAE VALE', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
+                SizedBox(height: 8),
+                Text('Música • Cultura • Natureza • Conexão', style: TextStyle(color: yellow)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ProfileTab extends StatelessWidget {
+  final String userName;
+  final String phone;
+  final String email;
+  final Set<String> favorites;
+
+  const ProfileTab({
+    super.key,
+    required this.userName,
+    required this.phone,
+    required this.email,
+    required this.favorites,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const Text('Seu Zé Capão', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 18),
+          ListTile(leading: const Icon(Icons.person_outline), title: Text(userName), subtitle: const Text('Nome')), 
+          ListTile(leading: const Icon(Icons.phone_outlined), title: Text(phone.isEmpty ? 'Não informado' : phone), subtitle: const Text('WhatsApp')),
+          ListTile(leading: const Icon(Icons.mail_outline), title: Text(email.isEmpty ? 'Não informado' : email), subtitle: const Text('E-mail')),
+          const Divider(),
+          const Text('Favoritos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          if (favorites.isEmpty)
+            const Text('Você ainda não favoritou nenhum parceiro.', style: TextStyle(color: Colors.black45)),
+          ...favorites.map((name) => ListTile(leading: const Icon(Icons.favorite, color: red), title: Text(name))),
+        ],
       ),
     );
   }
