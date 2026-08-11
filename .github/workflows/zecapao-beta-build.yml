@@ -49,7 +49,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-beta-0.1-apk
+          name: zecapao-beta-0.2-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
