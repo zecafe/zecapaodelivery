@@ -28,12 +28,22 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Validate branding assets
+      - name: Discover branding assets
+        id: branding
+        shell: bash
         run: |
-          test -f zecapao_beta/Ativos/Marca/zecapao_app_icon.png
-          test -f zecapao_beta/Ativos/Marca/zecafe.jpg
-          test -f zecapao_beta/Ativos/Marca/garimpo_burger.jpg
-          echo 'Branding assets encontrados em Ativos/Marca.'
+          echo '=== ARQUIVOS ENCONTRADOS EM zecapao_beta ==='
+          find zecapao_beta -maxdepth 5 -type f | sort
+          ICON_PATH="$(find zecapao_beta -type f -name 'zecapao_app_icon.png' | head -n 1)"
+          if [ -z "$ICON_PATH" ]; then
+            echo 'ERRO: zecapao_app_icon.png nao foi encontrado no repositorio.'
+            exit 1
+          fi
+          BRAND_DIR="$(dirname "$ICON_PATH")"
+          echo "Pasta de branding detectada: $BRAND_DIR"
+          test -f "$BRAND_DIR/zecafe.jpg" || { echo 'ERRO: zecafe.jpg ausente.'; exit 1; }
+          test -f "$BRAND_DIR/garimpo_burger.jpg" || { echo 'ERRO: garimpo_burger.jpg ausente.'; exit 1; }
+          echo "brand_dir=$BRAND_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Create clean Android project
         run: |
@@ -41,11 +51,14 @@ jobs:
           flutter create /tmp/zecapao_build --platforms=android --org com.zecapao.delivery --project-name zecapao_beta
 
       - name: Apply Zecapao Beta source and branding
+        shell: bash
         run: |
           cp zecapao_beta/pubspec.yaml /tmp/zecapao_build/pubspec.yaml
           cp zecapao_beta/lib/main.dart /tmp/zecapao_build/lib/main.dart
-          mkdir -p /tmp/zecapao_build/Ativos
-          cp -R zecapao_beta/Ativos/Marca /tmp/zecapao_build/Ativos/Marca
+          mkdir -p /tmp/zecapao_build/Ativos/Marca
+          cp -R "${{ steps.branding.outputs.brand_dir }}/." /tmp/zecapao_build/Ativos/Marca/
+          echo '=== BRANDING COPIADO PARA O BUILD ==='
+          find /tmp/zecapao_build/Ativos/Marca -maxdepth 2 -type f | sort
           rm -rf /tmp/zecapao_build/test
 
       - name: Install dependencies
@@ -67,7 +80,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-beta-0.3.1-branding-apk
+          name: zecapao-beta-0.3.2-branding-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
