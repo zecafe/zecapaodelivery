@@ -1,4 +1,4 @@
-name: Zecapao Beta APK
+name: Zecapao Foundation APK
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
       - '.github/workflows/zecapao-beta-build.yml'
 
 jobs:
-  build-beta-apk:
+  build-foundation-apk:
     runs-on: ubuntu-latest
 
     steps:
@@ -32,17 +32,13 @@ jobs:
         id: branding
         shell: bash
         run: |
-          echo '=== ARQUIVOS ENCONTRADOS EM zecapao_beta ==='
-          find zecapao_beta -maxdepth 5 -type f | sort
           ICON_PATH="$(find zecapao_beta -type f -name 'zecapao_app_icon.png' | head -n 1)"
           if [ -z "$ICON_PATH" ]; then
-            echo 'ERRO: zecapao_app_icon.png nao foi encontrado no repositorio.'
+            echo 'ERRO: zecapao_app_icon.png nao foi encontrado.'
             exit 1
           fi
           BRAND_DIR="$(dirname "$ICON_PATH")"
-          echo "Pasta de branding detectada: $BRAND_DIR"
           test -f "$BRAND_DIR/zecafe.jpg" || { echo 'ERRO: zecafe.jpg ausente.'; exit 1; }
-          test -f "$BRAND_DIR/garimpo_burger.jpg" || { echo 'ERRO: garimpo_burger.jpg ausente.'; exit 1; }
           echo "brand_dir=$BRAND_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Create clean Android project
@@ -50,22 +46,20 @@ jobs:
           rm -rf /tmp/zecapao_build
           flutter create /tmp/zecapao_build --platforms=android --org com.zecapao.delivery --project-name zecapao_beta
 
-      - name: Apply Zecapao Beta source and branding
+      - name: Apply source and branding
         shell: bash
         run: |
           cp zecapao_beta/pubspec.yaml /tmp/zecapao_build/pubspec.yaml
           cp zecapao_beta/lib/main.dart /tmp/zecapao_build/lib/main.dart
           mkdir -p /tmp/zecapao_build/Ativos/Marca
           cp -R "${{ steps.branding.outputs.brand_dir }}/." /tmp/zecapao_build/Ativos/Marca/
-          echo '=== BRANDING COPIADO PARA O BUILD ==='
-          find /tmp/zecapao_build/Ativos/Marca -maxdepth 2 -type f | sort
           rm -rf /tmp/zecapao_build/test
 
       - name: Install dependencies
         working-directory: /tmp/zecapao_build
         run: flutter pub get
 
-      - name: Generate official Android icon
+      - name: Generate Android icon
         working-directory: /tmp/zecapao_build
         run: dart run flutter_launcher_icons
 
@@ -80,7 +74,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-beta-0.5-apk
+          name: zecapao-foundation-1.0-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
