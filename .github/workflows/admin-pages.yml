@@ -1,4 +1,4 @@
-name: Deploy Zecapao Admin
+name: Deploy Zecapao Web Panels
 
 on:
   workflow_dispatch:
@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'admin/**'
+      - 'partner/**'
       - '.github/workflows/admin-pages.yml'
 
 permissions:
@@ -30,10 +31,19 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload Admin site
+      - name: Assemble web panels
+        run: |
+          rm -rf _site
+          mkdir -p _site/parceiro
+          cp -R admin/. _site/
+          cp -R partner/. _site/parceiro/
+          echo '=== SITE ==='
+          find _site -maxdepth 3 -type f | sort
+
+      - name: Upload web panels
         uses: actions/upload-pages-artifact@v3
         with:
-          path: admin
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment
