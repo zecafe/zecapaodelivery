@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zé Capão Parceiro</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <section id="login" class="center">
+    <form id="loginForm" class="card login-card">
+      <div class="brand">ZC</div>
+      <small>PAINEL DO PARCEIRO 1.0</small>
+      <h1>Zé Capão Delivery</h1>
+      <p>Pedidos, produtos e operação da sua loja em tempo real.</p>
+      <label>E-mail<input id="email" type="email" required></label>
+      <label>Senha<input id="password" type="password" required></label>
+      <button type="submit">Entrar</button>
+      <div id="error" class="error"></div>
+    </form>
+  </section>
+
+  <section id="panel" class="hidden app">
+    <aside>
+      <div><div class="brand">ZC</div><h2>Zé Capão</h2><span>Parceiro</span></div>
+      <nav>
+        <button class="nav active" data-view="orders">Pedidos</button>
+        <button class="nav" data-view="products">Produtos</button>
+        <button class="nav" data-view="store">Minha loja</button>
+      </nav>
+      <button id="logout" class="outline">Sair</button>
+    </aside>
+    <main>
+      <header>
+        <div><small>OPERAÇÃO EM TEMPO REAL</small><h1 id="title">Pedidos</h1></div>
+        <select id="storeSelect"></select>
+      </header>
+
+      <section id="ordersView" class="view">
+        <div class="stats">
+          <div class="stat"><span>Aguardando</span><strong id="pendingCount">0</strong></div>
+          <div class="stat"><span>Em preparo</span><strong id="prepCount">0</strong></div>
+          <div class="stat"><span>Hoje</span><strong id="todayCount">0</strong></div>
+        </div>
+        <div id="orders" class="orders"></div>
+      </section>
+
+      <section id="productsView" class="view hidden">
+        <div id="products" class="table-card"></div>
+      </section>
+
+      <section id="storeView" class="view hidden">
+        <div class="card store-card">
+          <h2 id="storeName">Loja</h2>
+          <p id="storeDescription"></p>
+          <div class="row"><span>Status de atendimento</span><button id="toggleOpen"></button></div>
+          <div class="row"><span>Taxa de entrega</span><strong id="deliveryFee"></strong></div>
+          <div class="row"><span>Tempo estimado</span><strong id="estimatedMinutes"></strong></div>
+        </div>
+      </section>
+    </main>
+  </section>
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
