@@ -1,60 +1,137 @@
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(const ZecapaoApp());
-}
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 const red = Color(0xFFE2231A);
 const yellow = Color(0xFFFFC107);
 const green = Color(0xFF1F5E3A);
 const cream = Color(0xFFF2E6C9);
 
-String money(double value) => 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
+const supabaseUrl = 'https://yovjbqtazkreruvxoawf.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdmpicXRhemtyZXJ1dnhvYXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1NjA1NTgsImV4cCI6MjEwMjEzNjU1OH0.4uwUVON1aNdH1D1UKMzNaOn5xplGf1ffwNkcwSw_30U';
 
-class Partner {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+  runApp(const ZecapaoApp());
+}
+
+String money(num value) => 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
+
+class Store {
+  final String id;
   final String name;
-  final String subtitle;
-  final String logo;
+  final String slug;
+  final String description;
+  final String? logoUrl;
+  final double deliveryFee;
+  final double minOrder;
+  final int estimatedMinutes;
+  final bool isOpen;
 
-  const Partner(this.name, this.subtitle, this.logo);
+  const Store({
+    required this.id,
+    required this.name,
+    required this.slug,
+    required this.description,
+    required this.logoUrl,
+    required this.deliveryFee,
+    required this.minOrder,
+    required this.estimatedMinutes,
+    required this.isOpen,
+  });
+
+  factory Store.fromMap(Map<String, dynamic> map) {
+    return Store(
+      id: map['id'] as String,
+      name: map['name'] as String? ?? '',
+      slug: map['slug'] as String? ?? '',
+      description: map['description'] as String? ?? '',
+      logoUrl: map['logo_url'] as String?,
+      deliveryFee: double.tryParse('${map['delivery_fee'] ?? 0}') ?? 0,
+      minOrder: double.tryParse('${map['min_order'] ?? 0}') ?? 0,
+      estimatedMinutes: map['estimated_minutes'] as int? ?? 40,
+      isOpen: map['is_open'] as bool? ?? false,
+    );
+  }
+
+  String get localLogo {
+    const logos = <String, String>{
+      'zecafe': 'Ativos/Marca/zecafe.jpg',
+      'cafe-duvalle': 'Ativos/Marca/cafe_duvalle.jpg',
+      'frutos': 'Ativos/Marca/frutos.jpg',
+      'garimpo-burger': 'Ativos/Marca/garimpo_burger.jpg',
+    };
+    return logos[slug] ?? 'Ativos/Marca/zecapao_app_icon.png';
+  }
 }
 
 class Product {
+  final String id;
+  final String storeId;
   final String name;
   final String description;
   final double price;
+  final String? imageUrl;
+  final String category;
 
-  const Product(this.name, this.description, this.price);
+  const Product({
+    required this.id,
+    required this.storeId,
+    required this.name,
+    required this.description,
+    required this.price,
+    required this.imageUrl,
+    required this.category,
+  });
+
+  factory Product.fromMap(Map<String, dynamic> map) {
+    return Product(
+      id: map['id'] as String,
+      storeId: map['store_id'] as String,
+      name: map['name'] as String? ?? '',
+      description: map['description'] as String? ?? '',
+      price: double.tryParse('${map['price'] ?? 0}') ?? 0,
+      imageUrl: map['image_url'] as String?,
+      category: map['category'] as String? ?? '',
+    );
+  }
 }
 
-const partners = <Partner>[
-  Partner('Zecafé', 'Cafés • Doces • Experiências', 'Ativos/Marca/zecafe.jpg'),
-  Partner('Café DuValle', 'Café • Brunch', 'Ativos/Marca/cafe_duvalle.jpg'),
-  Partner('Frutos', 'Sucos • Focaccias • Toasts', 'Ativos/Marca/frutos.jpg'),
-  Partner('Garimpo Burger', 'Hambúrguer artesanal', 'Ativos/Marca/garimpo_burger.jpg'),
-  Partner('Gatto Sete Bistrô', 'Bistrô • Gastronomia', 'Ativos/Marca/gatto_sete.jpg'),
-  Partner('Green', 'Gastronomia', 'Ativos/Marca/green.jpg'),
-  Partner('Mandioca Gastrobar', 'Restaurante • Bar', 'Ativos/Marca/mandioca.jpg'),
-  Partner('Ôxe Restô', 'Restaurante', 'Ativos/Marca/oxe.jpg'),
-  Partner('Paulistano Capão', 'Restaurante', 'Ativos/Marca/paulistano.jpg'),
-  Partner('Pico do Açaí', 'Açaí • Lanches', 'Ativos/Marca/pico_acai.jpg'),
-  Partner('Pizza Lab', 'Pizza • Music & Drinks', 'Ativos/Marca/pizza_lab.jpg'),
-  Partner('Comercial Bastos', 'Mercado • Conveniência', 'Ativos/Marca/comercial_bastos.jpg'),
-  Partner('Alma Bistrô', 'Bistrô', 'Ativos/Marca/alma.jpg'),
-  Partner('Dona Beli', 'Comida caseira', 'Ativos/Marca/dona_beli.jpg'),
-  Partner('Budha Restaurante', 'Restaurante', 'Ativos/Marca/budha.jpg'),
-  Partner('Cabeça de Gelo', 'Turismo de aventura • Sucos', 'Ativos/Marca/cabeca_de_gelo.jpg'),
-  Partner('Capão Grande', 'Pizzaria integral', 'Ativos/Marca/capao_grande.jpg'),
-  Partner('CBD', 'Loja local', 'Ativos/Marca/cbd.jpg'),
-  Partner('Charruá Restaurante', 'Restaurante', 'Ativos/Marca/charrua.jpg'),
-];
+class CartLine {
+  final Product product;
+  int quantity;
 
-const menu = <Product>[
-  Product('Especial da casa', 'Seleção preparada pelo parceiro', 32),
-  Product('Queridinho do Vale', 'Um dos mais pedidos da casa', 28),
-  Product('Combo Capão', 'Principal + acompanhamento', 39),
-  Product('Bebida da casa', 'Opção refrescante', 12),
-];
+  CartLine(this.product, {this.quantity = 1});
+
+  double get total => product.price * quantity;
+}
+
+class MarketplaceRepository {
+  final SupabaseClient client = Supabase.instance.client;
+
+  Future<List<Store>> fetchStores() async {
+    final data = await client
+        .from('stores')
+        .select('id,name,slug,description,logo_url,delivery_fee,min_order,estimated_minutes,is_open')
+        .eq('is_active', true)
+        .order('name');
+    return (data as List<dynamic>)
+        .map((item) => Store.fromMap(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<Product>> fetchProducts(String storeId) async {
+    final data = await client
+        .from('products')
+        .select('id,store_id,name,description,price,image_url,category')
+        .eq('store_id', storeId)
+        .eq('is_available', true)
+        .order('sort_order');
+    return (data as List<dynamic>)
+        .map((item) => Product.fromMap(item as Map<String, dynamic>))
+        .toList();
+  }
+}
 
 class ZecapaoApp extends StatelessWidget {
   const ZecapaoApp({super.key});
@@ -86,29 +163,24 @@ class SignupPage extends StatefulWidget {
 }
 
 class _SignupPageState extends State<SignupPage> {
-  final name = TextEditingController();
-  final phone = TextEditingController();
-  final email = TextEditingController();
-  bool terms = false;
+  final nameController = TextEditingController();
+  final phoneController = TextEditingController();
+  bool acceptedTerms = false;
 
   @override
   void dispose() {
-    name.dispose();
-    phone.dispose();
-    email.dispose();
+    nameController.dispose();
+    phoneController.dispose();
     super.dispose();
   }
 
-  void enter() {
+  void enterApp() {
+    final name = nameController.text.trim().isEmpty
+        ? 'capoeira'
+        : nameController.text.trim();
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (_) => MainShell(
-          userName: name.text.trim().isEmpty ? 'capoeira' : name.text.trim(),
-          phone: phone.text.trim(),
-          email: email.text.trim(),
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => HomePage(userName: name)),
     );
   }
 
@@ -119,11 +191,11 @@ class _SignupPageState extends State<SignupPage> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            const SizedBox(height: 24),
+            const SizedBox(height: 30),
             Center(
               child: Image.asset(
                 'Ativos/Marca/zecapao_app_icon.png',
-                height: 108,
+                height: 110,
                 fit: BoxFit.contain,
               ),
             ),
@@ -134,12 +206,12 @@ class _SignupPageState extends State<SignupPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Um cadastro rapidinho e o Vale inteiro fica na sua mão.',
-              style: TextStyle(fontSize: 16, color: Colors.black54, height: 1.4),
+              'Agora o Zé Capão já conversa com a nuvem. Seu cadastro ainda é simples, mas os estabelecimentos e produtos passam a vir do servidor.',
+              style: TextStyle(fontSize: 15, color: Colors.black54, height: 1.45),
             ),
-            const SizedBox(height: 26),
+            const SizedBox(height: 24),
             TextField(
-              controller: name,
+              controller: nameController,
               decoration: const InputDecoration(
                 labelText: 'Como podemos te chamar?',
                 prefixIcon: Icon(Icons.person_outline),
@@ -148,7 +220,7 @@ class _SignupPageState extends State<SignupPage> {
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: phone,
+              controller: phoneController,
               keyboardType: TextInputType.phone,
               decoration: const InputDecoration(
                 labelText: 'WhatsApp',
@@ -156,27 +228,17 @@ class _SignupPageState extends State<SignupPage> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: email,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'E-mail (opcional)',
-                prefixIcon: Icon(Icons.mail_outline),
-                border: OutlineInputBorder(),
-              ),
-            ),
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
-              value: terms,
-              onChanged: (value) => setState(() => terms = value ?? false),
+              value: acceptedTerms,
+              onChanged: (value) => setState(() => acceptedTerms = value ?? false),
               title: const Text(
                 'Aceito os termos e a política de privacidade',
                 style: TextStyle(fontSize: 13),
               ),
             ),
             FilledButton(
-              onPressed: terms ? enter : null,
+              onPressed: acceptedTerms ? enterApp : null,
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
               child: const Text(
                 'ENTRAR NO ZÉ CAPÃO',
@@ -186,7 +248,7 @@ class _SignupPageState extends State<SignupPage> {
             const SizedBox(height: 12),
             const Center(
               child: Text(
-                'Beta 0.5 • Vale do Capão, Bahia',
+                'Foundation 1.0 • Supabase conectado',
                 style: TextStyle(color: Colors.black38, fontSize: 12),
               ),
             ),
@@ -197,272 +259,242 @@ class _SignupPageState extends State<SignupPage> {
   }
 }
 
-class MainShell extends StatefulWidget {
+class HomePage extends StatefulWidget {
   final String userName;
-  final String phone;
-  final String email;
 
-  const MainShell({
-    super.key,
-    required this.userName,
-    required this.phone,
-    required this.email,
-  });
+  const HomePage({super.key, required this.userName});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _MainShellState extends State<MainShell> {
-  int index = 0;
-  final Set<String> favorites = {};
-  final List<String> orders = [];
+class _HomePageState extends State<HomePage> {
+  final repository = MarketplaceRepository();
+  late Future<List<Store>> storesFuture;
+  String query = '';
 
-  void toggleFavorite(String name) {
-    setState(() {
-      favorites.contains(name) ? favorites.remove(name) : favorites.add(name);
-    });
+  @override
+  void initState() {
+    super.initState();
+    storesFuture = repository.fetchStores();
   }
 
-  void addOrder(String description) {
+  Future<void> refresh() async {
     setState(() {
-      orders.insert(0, description);
-      index = 2;
+      storesFuture = repository.fetchStores();
     });
+    await storesFuture;
   }
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      HomeTab(
-        userName: widget.userName,
-        favorites: favorites,
-        toggleFavorite: toggleFavorite,
-      ),
-      SearchTab(
-        favorites: favorites,
-        toggleFavorite: toggleFavorite,
-      ),
-      OrdersTab(orders: orders),
-      const EventsTab(),
-      ProfileTab(
-        userName: widget.userName,
-        phone: widget.phone,
-        email: widget.email,
-        favorites: favorites,
-      ),
-    ];
-
     return Scaffold(
-      body: IndexedStack(index: index, children: pages),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (value) => setState(() => index = value),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Início'),
-          NavigationDestination(icon: Icon(Icons.search), label: 'Buscar'),
-          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Pedidos'),
-          NavigationDestination(icon: Icon(Icons.event_outlined), label: 'Eventos'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: 'Perfil'),
-        ],
-      ),
-    );
-  }
-}
-
-class HomeTab extends StatelessWidget {
-  final String userName;
-  final Set<String> favorites;
-  final ValueChanged<String> toggleFavorite;
-
-  const HomeTab({
-    super.key,
-    required this.userName,
-    required this.favorites,
-    required this.toggleFavorite,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-        children: [
-          Row(
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: refresh,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 26),
             children: [
-              Image.asset('Ativos/Marca/zecapao_app_icon.png', width: 52, height: 52, fit: BoxFit.contain),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+              Row(
+                children: [
+                  Image.asset(
+                    'Ativos/Marca/zecapao_app_icon.png',
+                    width: 52,
+                    height: 52,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Salve, ${widget.userName}!',
+                          style: const TextStyle(color: Colors.black54),
+                        ),
+                        const Text(
+                          'Vale do Capão • BA',
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.cloud_done_outlined, color: green),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: red,
+                  borderRadius: BorderRadius.circular(28),
+                ),
+                child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Salve, $userName!', style: const TextStyle(color: Colors.black54)),
-                    const Text(
-                      'Vale do Capão • BA',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                    Text(
+                      'Pediu. Chegou.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Agora com dados reais vindos do servidor.',
+                      style: TextStyle(color: cream, fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.notifications_none),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: red, borderRadius: BorderRadius.circular(28)),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Pediu. Chegou.',
-                  style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+              const SizedBox(height: 18),
+              TextField(
+                onChanged: (value) => setState(() => query = value),
+                decoration: const InputDecoration(
+                  hintText: 'Buscar estabelecimento...',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
                 ),
-                SizedBox(height: 6),
-                Text('O Vale inteiro na sua mão.', style: TextStyle(color: cream, fontWeight: FontWeight.w700)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 22),
-          const Text('Categorias', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 12),
-          const Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              CategoryChip('Comida', Icons.restaurant),
-              CategoryChip('Bebidas', Icons.local_bar),
-              CategoryChip('Mercado', Icons.shopping_basket),
-              CategoryChip('Cafés', Icons.coffee),
-              CategoryChip('Eventos', Icons.event),
-              CategoryChip('Pousadas', Icons.bed),
-              CategoryChip('Experiências', Icons.landscape),
+              ),
+              const SizedBox(height: 22),
+              const Text(
+                'Estabelecimentos online',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 10),
+              FutureBuilder<List<Store>>(
+                future: storesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.all(36),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return ErrorCard(
+                      message: 'Não consegui consultar o servidor.\n${snapshot.error}',
+                      onRetry: refresh,
+                    );
+                  }
+
+                  final allStores = snapshot.data ?? const <Store>[];
+                  final filtered = allStores.where((store) {
+                    final text = '${store.name} ${store.description}'.toLowerCase();
+                    return text.contains(query.toLowerCase());
+                  }).toList();
+
+                  if (filtered.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32),
+                      child: Center(child: Text('Nenhum estabelecimento encontrado.')),
+                    );
+                  }
+
+                  return Column(
+                    children: filtered
+                        .map((store) => StoreCard(store: store, repository: repository))
+                        .toList(),
+                  );
+                },
+              ),
             ],
           ),
-          const SizedBox(height: 24),
-          const Text('Parceiros do Capão', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          ...partners.map(
-            (partner) => PartnerCard(
-              partner: partner,
-              favorite: favorites.contains(partner.name),
-              onFavorite: () => toggleFavorite(partner.name),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class SearchTab extends StatefulWidget {
-  final Set<String> favorites;
-  final ValueChanged<String> toggleFavorite;
+class ErrorCard extends StatelessWidget {
+  final String message;
+  final Future<void> Function() onRetry;
 
-  const SearchTab({
-    super.key,
-    required this.favorites,
-    required this.toggleFavorite,
-  });
-
-  @override
-  State<SearchTab> createState() => _SearchTabState();
-}
-
-class _SearchTabState extends State<SearchTab> {
-  String query = '';
-
-  @override
-  Widget build(BuildContext context) {
-    final filtered = partners.where((partner) {
-      final text = '${partner.name} ${partner.subtitle}'.toLowerCase();
-      return text.contains(query.toLowerCase());
-    }).toList();
-
-    return SafeArea(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              autofocus: false,
-              onChanged: (value) => setState(() => query = value),
-              decoration: const InputDecoration(
-                hintText: 'Buscar restaurante, café, mercado...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: filtered.map((partner) {
-                return PartnerCard(
-                  partner: partner,
-                  favorite: widget.favorites.contains(partner.name),
-                  onFavorite: () => widget.toggleFavorite(partner.name),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class CategoryChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-
-  const CategoryChip(this.label, this.icon, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 78,
-      child: Column(
-        children: [
-          CircleAvatar(radius: 26, backgroundColor: cream, child: Icon(icon, color: red)),
-          const SizedBox(height: 6),
-          Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
-        ],
-      ),
-    );
-  }
-}
-
-class PartnerCard extends StatelessWidget {
-  final Partner partner;
-  final bool favorite;
-  final VoidCallback onFavorite;
-
-  const PartnerCard({
-    super.key,
-    required this.partner,
-    required this.favorite,
-    required this.onFavorite,
-  });
+  const ErrorCard({super.key, required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(10),
-        leading: SizedBox(width: 62, height: 62, child: Image.asset(partner.logo, fit: BoxFit.contain)),
-        title: Text(partner.name, style: const TextStyle(fontWeight: FontWeight.w900)),
-        subtitle: Text('${partner.subtitle}\n25–40 min • Entrega'),
-        isThreeLine: true,
-        trailing: IconButton(
-          onPressed: onFavorite,
-          icon: Icon(favorite ? Icons.favorite : Icons.favorite_border, color: favorite ? red : null),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          children: [
+            const Icon(Icons.cloud_off, color: red, size: 36),
+            const SizedBox(height: 10),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            OutlinedButton(onPressed: onRetry, child: const Text('TENTAR NOVAMENTE')),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class StoreCard extends StatelessWidget {
+  final Store store;
+  final MarketplaceRepository repository;
+
+  const StoreCard({super.key, required this.store, required this.repository});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(12),
+        leading: SizedBox(
+          width: 64,
+          height: 64,
+          child: store.logoUrl != null && store.logoUrl!.isNotEmpty
+              ? Image.network(
+                  store.logoUrl!,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Image.asset(store.localLogo, fit: BoxFit.contain),
+                )
+              : Image.asset(store.localLogo, fit: BoxFit.contain),
+        ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                store.name,
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: store.isOpen ? const Color(0xFFE5F5E8) : const Color(0xFFFFE4E0),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                store.isOpen ? 'ABERTO' : 'FECHADO',
+                style: TextStyle(
+                  color: store.isOpen ? green : red,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: Text(
+            '${store.description}\n${store.estimatedMinutes} min • Entrega ${money(store.deliveryFee)}',
+          ),
+        ),
+        isThreeLine: true,
+        trailing: const Icon(Icons.chevron_right),
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => PartnerPage(partner: partner)),
+            MaterialPageRoute(
+              builder: (_) => StorePage(store: store, repository: repository),
+            ),
           );
         },
       ),
@@ -470,36 +502,50 @@ class PartnerCard extends StatelessWidget {
   }
 }
 
-class PartnerPage extends StatefulWidget {
-  final Partner partner;
+class StorePage extends StatefulWidget {
+  final Store store;
+  final MarketplaceRepository repository;
 
-  const PartnerPage({super.key, required this.partner});
+  const StorePage({
+    super.key,
+    required this.store,
+    required this.repository,
+  });
 
   @override
-  State<PartnerPage> createState() => _PartnerPageState();
+  State<StorePage> createState() => _StorePageState();
 }
 
-class _PartnerPageState extends State<PartnerPage> {
-  final Map<Product, int> cart = {};
+class _StorePageState extends State<StorePage> {
+  late Future<List<Product>> productsFuture;
+  final Map<String, CartLine> cart = {};
 
-  int get itemCount => cart.values.fold(0, (sum, quantity) => sum + quantity);
-
-  double get subtotal {
-    double total = 0;
-    cart.forEach((product, quantity) {
-      total += product.price * quantity;
-    });
-    return total;
+  @override
+  void initState() {
+    super.initState();
+    productsFuture = widget.repository.fetchProducts(widget.store.id);
   }
 
+  int get itemCount => cart.values.fold(0, (sum, line) => sum + line.quantity);
+  double get subtotal => cart.values.fold(0, (sum, line) => sum + line.total);
+
   void add(Product product) {
-    setState(() => cart[product] = (cart[product] ?? 0) + 1);
+    setState(() {
+      final current = cart[product.id];
+      if (current == null) {
+        cart[product.id] = CartLine(product);
+      } else {
+        current.quantity++;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.partner.name, style: const TextStyle(fontWeight: FontWeight.w900))),
+      appBar: AppBar(
+        title: Text(widget.store.name, style: const TextStyle(fontWeight: FontWeight.w900)),
+      ),
       bottomNavigationBar: cart.isEmpty
           ? null
           : SafeArea(
@@ -511,14 +557,17 @@ class _PartnerPageState extends State<PartnerPage> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => CartPage(
-                          partner: widget.partner,
-                          initialCart: Map<Product, int>.from(cart),
+                          store: widget.store,
+                          lines: cart.values.toList(),
                         ),
                       ),
                     );
                   },
-                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
-                  child: Text('VER CARRINHO • $itemCount item(ns) • ${money(subtotal)}'),
+                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+                  child: Text(
+                    'VER CARRINHO • $itemCount item(ns) • ${money(subtotal)}',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
                 ),
               ),
             ),
@@ -526,45 +575,82 @@ class _PartnerPageState extends State<PartnerPage> {
         padding: const EdgeInsets.all(18),
         children: [
           Container(
-            height: 160,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
-            child: Image.asset(widget.partner.logo, fit: BoxFit.contain),
+            height: 150,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: widget.store.logoUrl != null && widget.store.logoUrl!.isNotEmpty
+                ? Image.network(
+                    widget.store.logoUrl!,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Image.asset(widget.store.localLogo),
+                  )
+                : Image.asset(widget.store.localLogo),
           ),
           const SizedBox(height: 18),
-          Text(widget.partner.name, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-          Text(widget.partner.subtitle, style: const TextStyle(color: Colors.black54)),
+          Text(
+            widget.store.name,
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 4),
+          Text(widget.store.description, style: const TextStyle(color: Colors.black54)),
           const SizedBox(height: 8),
-          const Row(
-            children: [
-              Icon(Icons.star, color: yellow, size: 18),
-              Text(' 4,8  •  25–40 min  •  Entrega', style: TextStyle(fontWeight: FontWeight.w700)),
-            ],
+          Text(
+            '${widget.store.estimatedMinutes} min • Entrega ${money(widget.store.deliveryFee)} • Pedido mín. ${money(widget.store.minOrder)}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 22),
-          const Text('Cardápio', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 6),
-          const Text(
-            'A estrutura já está pronta para receber fotos reais e itens específicos de cada parceiro.',
-            style: TextStyle(color: Colors.black45, fontSize: 12),
-          ),
+          const SizedBox(height: 24),
+          const Text('Cardápio do servidor', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
-          ...menu.map(
-            (product) => Card(
-              child: ListTile(
-                contentPadding: const EdgeInsets.all(12),
-                leading: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.restaurant_menu, color: red, size: 30),
-                ),
-                title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.w900)),
-                subtitle: Text('${product.description}\n${money(product.price)}'),
-                isThreeLine: true,
-                trailing: IconButton.filled(onPressed: () => add(product), icon: const Icon(Icons.add)),
-              ),
-            ),
+          FutureBuilder<List<Product>>(
+            future: productsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: Padding(
+                  padding: EdgeInsets.all(30),
+                  child: CircularProgressIndicator(),
+                ));
+              }
+              if (snapshot.hasError) {
+                return Text('Erro ao carregar cardápio: ${snapshot.error}');
+              }
+              final products = snapshot.data ?? const <Product>[];
+              if (products.isEmpty) {
+                return const Text('Este estabelecimento ainda não cadastrou produtos.');
+              }
+              return Column(
+                children: products.map((product) {
+                  return Card(
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.all(12),
+                      leading: Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: cream,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(product.imageUrl!, fit: BoxFit.cover),
+                              )
+                            : const Icon(Icons.coffee, color: red, size: 30),
+                      ),
+                      title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.w900)),
+                      subtitle: Text('${product.description}\n${money(product.price)}'),
+                      isThreeLine: true,
+                      trailing: IconButton.filled(
+                        onPressed: () => add(product),
+                        icon: const Icon(Icons.add),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
           ),
         ],
       ),
@@ -573,318 +659,106 @@ class _PartnerPageState extends State<PartnerPage> {
 }
 
 class CartPage extends StatefulWidget {
-  final Partner partner;
-  final Map<Product, int> initialCart;
+  final Store store;
+  final List<CartLine> lines;
 
-  const CartPage({
-    super.key,
-    required this.partner,
-    required this.initialCart,
-  });
+  const CartPage({super.key, required this.store, required this.lines});
 
   @override
   State<CartPage> createState() => _CartPageState();
 }
 
 class _CartPageState extends State<CartPage> {
-  late Map<Product, int> cart;
-  String payment = 'Pix';
-  final address = TextEditingController();
-  final notes = TextEditingController();
+  double get subtotal => widget.lines.fold(0, (sum, line) => sum + line.total);
+  double get total => subtotal + widget.store.deliveryFee;
 
-  @override
-  void initState() {
-    super.initState();
-    cart = Map<Product, int>.from(widget.initialCart);
-  }
-
-  @override
-  void dispose() {
-    address.dispose();
-    notes.dispose();
-    super.dispose();
-  }
-
-  double get subtotal {
-    double total = 0;
-    cart.forEach((product, quantity) {
-      total += product.price * quantity;
-    });
-    return total;
-  }
-
-  void change(Product product, int delta) {
+  void change(CartLine line, int delta) {
     setState(() {
-      final next = (cart[product] ?? 0) + delta;
-      if (next <= 0) {
-        cart.remove(product);
-      } else {
-        cart[product] = next;
+      line.quantity += delta;
+      if (line.quantity <= 0) {
+        widget.lines.remove(line);
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    const deliveryFee = 7.0;
-    final total = subtotal + deliveryFee;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Seu carrinho', style: TextStyle(fontWeight: FontWeight.w900))),
       body: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-          ...cart.entries.map((entry) {
+          Text(widget.store.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 10),
+          ...widget.lines.map((line) {
             return Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(entry.key.name, style: const TextStyle(fontWeight: FontWeight.w900)),
-                          Text(money(entry.key.price)),
-                        ],
-                      ),
-                    ),
-                    IconButton(onPressed: () => change(entry.key, -1), icon: const Icon(Icons.remove_circle_outline)),
-                    Text('${entry.value}', style: const TextStyle(fontWeight: FontWeight.w900)),
-                    IconButton(onPressed: () => change(entry.key, 1), icon: const Icon(Icons.add_circle_outline)),
-                  ],
+              child: ListTile(
+                title: Text(line.product.name),
+                subtitle: Text('${money(line.product.price)} cada'),
+                trailing: SizedBox(
+                  width: 128,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(onPressed: () => change(line, -1), icon: const Icon(Icons.remove_circle_outline)),
+                      Text('${line.quantity}', style: const TextStyle(fontWeight: FontWeight.w900)),
+                      IconButton(onPressed: () => change(line, 1), icon: const Icon(Icons.add_circle_outline)),
+                    ],
+                  ),
                 ),
               ),
             );
           }),
-          const SizedBox(height: 10),
-          TextField(
-            controller: address,
-            decoration: const InputDecoration(
+          const Divider(height: 30),
+          ListTile(title: const Text('Subtotal'), trailing: Text(money(subtotal))),
+          ListTile(title: const Text('Entrega'), trailing: Text(money(widget.store.deliveryFee))),
+          ListTile(
+            title: const Text('Total', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+            trailing: Text(
+              money(total),
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const TextField(
+            decoration: InputDecoration(
               labelText: 'Endereço / pousada / referência',
               prefixIcon: Icon(Icons.location_on_outlined),
               border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: notes,
-            maxLines: 2,
-            decoration: const InputDecoration(
-              labelText: 'Observações do pedido',
+          const TextField(
+            decoration: InputDecoration(
+              labelText: 'Observações',
               prefixIcon: Icon(Icons.notes),
               border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 18),
-          const Text('Forma de pagamento', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-          RadioListTile<String>(
-            value: 'Pix',
-            groupValue: payment,
-            title: const Text('Pix'),
-            secondary: const Icon(Icons.pix),
-            onChanged: (value) => setState(() => payment = value ?? 'Pix'),
-          ),
-          RadioListTile<String>(
-            value: 'Cartão na entrega',
-            groupValue: payment,
-            title: const Text('Cartão na entrega'),
-            secondary: const Icon(Icons.credit_card),
-            onChanged: (value) => setState(() => payment = value ?? 'Cartão na entrega'),
-          ),
-          RadioListTile<String>(
-            value: 'Dinheiro',
-            groupValue: payment,
-            title: const Text('Dinheiro'),
-            secondary: const Icon(Icons.payments_outlined),
-            onChanged: (value) => setState(() => payment = value ?? 'Dinheiro'),
-          ),
-          const Divider(),
-          ListTile(title: const Text('Subtotal'), trailing: Text(money(subtotal))),
-          const ListTile(title: Text('Entrega'), trailing: Text('R\$ 7,00')),
-          ListTile(
-            title: const Text('Total', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-            trailing: Text(money(total), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-          ),
-          const SizedBox(height: 12),
           FilledButton(
-            onPressed: cart.isEmpty
+            onPressed: widget.lines.isEmpty
                 ? null
                 : () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => OrderSuccess(
-                          partner: widget.partner.name,
-                          total: total,
-                          payment: payment,
+                    showDialog<void>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Fundação conectada ✅'),
+                        content: const Text(
+                          'Este carrinho já usa produtos reais do Supabase. A gravação do pedido no banco será a próxima etapa.',
                         ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('OK'),
+                          ),
+                        ],
                       ),
                     );
                   },
             style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
-            child: const Text('CONFIRMAR PEDIDO', style: TextStyle(fontWeight: FontWeight.w900)),
+            child: const Text('VALIDAR CARRINHO', style: TextStyle(fontWeight: FontWeight.w900)),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class OrderSuccess extends StatelessWidget {
-  final String partner;
-  final double total;
-  final String payment;
-
-  const OrderSuccess({
-    super.key,
-    required this.partner,
-    required this.total,
-    required this.payment,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircleAvatar(radius: 42, backgroundColor: green, child: Icon(Icons.check, color: Colors.white, size: 46)),
-                const SizedBox(height: 22),
-                const Text('Pedido recebido!', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 8),
-                Text(partner, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-                Text('${money(total)} • $payment'),
-                const SizedBox(height: 22),
-                const OrderStep(icon: Icons.receipt_long, text: 'Pedido recebido', active: true),
-                const OrderStep(icon: Icons.restaurant, text: 'Em preparação', active: false),
-                const OrderStep(icon: Icons.delivery_dining, text: 'Saiu para entrega', active: false),
-                const OrderStep(icon: Icons.home, text: 'Entregue', active: false),
-                const SizedBox(height: 22),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('VOLTAR AO PARCEIRO'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class OrderStep extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final bool active;
-
-  const OrderStep({super.key, required this.icon, required this.text, required this.active});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      dense: true,
-      leading: CircleAvatar(
-        backgroundColor: active ? green : Colors.black12,
-        child: Icon(icon, color: active ? Colors.white : Colors.black45),
-      ),
-      title: Text(text, style: TextStyle(fontWeight: active ? FontWeight.w900 : FontWeight.w500)),
-    );
-  }
-}
-
-class OrdersTab extends StatelessWidget {
-  final List<String> orders;
-
-  const OrdersTab({super.key, required this.orders});
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Pedidos', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 14),
-            Expanded(
-              child: orders.isEmpty
-                  ? const Center(child: Text('Seus próximos pedidos aparecerão aqui.', style: TextStyle(color: Colors.black45)))
-                  : ListView(children: orders.map((order) => ListTile(leading: const Icon(Icons.receipt_long), title: Text(order))).toList()),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class EventsTab extends StatelessWidget {
-  const EventsTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text('Eventos', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(color: const Color(0xFF191919), borderRadius: BorderRadius.circular(28)),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('CAPÃO REGGAE VALE', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
-                SizedBox(height: 8),
-                Text('Música • Cultura • Natureza • Conexão', style: TextStyle(color: yellow)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ProfileTab extends StatelessWidget {
-  final String userName;
-  final String phone;
-  final String email;
-  final Set<String> favorites;
-
-  const ProfileTab({
-    super.key,
-    required this.userName,
-    required this.phone,
-    required this.email,
-    required this.favorites,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text('Seu Zé Capão', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 18),
-          ListTile(leading: const Icon(Icons.person_outline), title: Text(userName), subtitle: const Text('Nome')), 
-          ListTile(leading: const Icon(Icons.phone_outlined), title: Text(phone.isEmpty ? 'Não informado' : phone), subtitle: const Text('WhatsApp')),
-          ListTile(leading: const Icon(Icons.mail_outline), title: Text(email.isEmpty ? 'Não informado' : email), subtitle: const Text('E-mail')),
-          const Divider(),
-          const Text('Favoritos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
-          if (favorites.isEmpty)
-            const Text('Você ainda não favoritou nenhum parceiro.', style: TextStyle(color: Colors.black45)),
-          ...favorites.map((name) => ListTile(leading: const Icon(Icons.favorite, color: red), title: Text(name))),
         ],
       ),
     );
