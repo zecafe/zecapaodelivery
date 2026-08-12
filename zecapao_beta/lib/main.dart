@@ -8,11 +8,11 @@ const green = Color(0xFF1F5E3A);
 const cream = Color(0xFFF2E6C9);
 
 const supabaseUrl = 'https://yovjbqtazkreruvxoawf.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdmpicXRhemtyZXJ1dnhvYXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1NjA1NTgsImV4cCI6MjEwMjEzNjU1OH0.4uwUVON1aNdH1D1UKMzNaOn5xplGf1ffwNkcwSw_30U';
+const supabasePublishableKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdmpicXRhemtyZXJ1dnhvYXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1NjA1NTgsImV4cCI6MjEwMjEzNjU1OH0.4uwUVON1aNdH1D1UKMzNaOn5xplGf1ffwNkcwSw_30U';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+  await Supabase.initialize(url: supabaseUrl, publishableKey: supabasePublishableKey);
   runApp(const ZecapaoApp());
 }
 
@@ -313,7 +313,18 @@ class _StorePageState extends State<StorePage> {
 
   double get subtotal => cart.values.fold(0, (s, e) => s + e.total);
   int get count => cart.values.fold(0, (s, e) => s + e.quantity);
-  void add(Product p) => setState(() => cart.update(p.id, (e) => e..quantity++, ifAbsent: () => CartLine(p)));
+  void add(Product p) {
+    setState(() {
+      cart.update(
+        p.id,
+        (line) {
+          line.quantity += 1;
+          return line;
+        },
+        ifAbsent: () => CartLine(p),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
