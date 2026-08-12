@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -22,6 +23,7 @@ class Store {
   final double deliveryFee, minOrder;
   final int estimatedMinutes;
   final bool isOpen;
+
   Store.fromMap(Map<String, dynamic> m)
       : id = m['id'],
         name = m['name'] ?? '',
@@ -46,6 +48,7 @@ class Store {
 class Product {
   final String id, storeId, name, description, category;
   final double price;
+
   Product.fromMap(Map<String, dynamic> m)
       : id = m['id'],
         storeId = m['store_id'],
@@ -67,12 +70,17 @@ class Repo {
 
   Future<List<Store>> stores() async {
     final data = await client.from('stores').select().eq('is_active', true).order('name');
-    return (data as List).map((e) => Store.fromMap(e)).toList();
+    return (data as List).map((e) => Store.fromMap(Map<String, dynamic>.from(e))).toList();
   }
 
   Future<List<Product>> products(String storeId) async {
-    final data = await client.from('products').select().eq('store_id', storeId).eq('is_available', true).order('sort_order');
-    return (data as List).map((e) => Product.fromMap(e)).toList();
+    final data = await client
+        .from('products')
+        .select()
+        .eq('store_id', storeId)
+        .eq('is_available', true)
+        .order('sort_order');
+    return (data as List).map((e) => Product.fromMap(Map<String, dynamic>.from(e))).toList();
   }
 
   Future<String> createOrder({
@@ -105,6 +113,7 @@ class Repo {
 
 class ZecapaoApp extends StatelessWidget {
   const ZecapaoApp({super.key});
+
   @override
   Widget build(BuildContext context) => MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -129,6 +138,14 @@ class _SignupPageState extends State<SignupPage> {
   final name = TextEditingController();
   final phone = TextEditingController();
   bool terms = false;
+
+  @override
+  void dispose() {
+    name.dispose();
+    phone.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         body: SafeArea(
@@ -140,21 +157,34 @@ class _SignupPageState extends State<SignupPage> {
               const SizedBox(height: 24),
               const Text('Chegue mais. 🌵', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900)),
               const SizedBox(height: 8),
-              const Text('Seu pedido agora vai de verdade para o painel do Zé Capão.', style: TextStyle(color: Colors.black54, fontSize: 15)),
+              const Text('Seu pedido agora vai de verdade para o estabelecimento.', style: TextStyle(color: Colors.black54, fontSize: 15)),
               const SizedBox(height: 24),
               TextField(controller: name, decoration: const InputDecoration(labelText: 'Seu nome', prefixIcon: Icon(Icons.person_outline))),
               const SizedBox(height: 12),
               TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'WhatsApp', prefixIcon: Icon(Icons.phone_outlined))),
-              CheckboxListTile(contentPadding: EdgeInsets.zero, value: terms, onChanged: (v) => setState(() => terms = v ?? false), title: const Text('Aceito os termos e a política de privacidade', style: TextStyle(fontSize: 13))),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: terms,
+                onChanged: (v) => setState(() => terms = v ?? false),
+                title: const Text('Aceito os termos e a política de privacidade', style: TextStyle(fontSize: 13)),
+              ),
               FilledButton(
                 onPressed: terms
-                    ? () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomePage(customerName: name.text.trim().isEmpty ? 'Cliente' : name.text.trim(), phone: phone.text.trim())))
+                    ? () => Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => HomePage(
+                              customerName: name.text.trim().isEmpty ? 'Cliente' : name.text.trim(),
+                              phone: phone.text.trim(),
+                            ),
+                          ),
+                        )
                     : null,
                 style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
                 child: const Text('ENTRAR NO ZÉ CAPÃO', style: TextStyle(fontWeight: FontWeight.w900)),
               ),
               const SizedBox(height: 12),
-              const Center(child: Text('Pedido Real 1.0', style: TextStyle(color: Colors.black38))),
+              const Center(child: Text('Operação 1.1 • Status automático', style: TextStyle(color: Colors.black38))),
             ],
           ),
         ),
@@ -171,45 +201,90 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final repo = Repo();
   late Future<List<Store>> future;
+
   @override
-  void initState() { super.initState(); future = repo.stores(); }
+  void initState() {
+    super.initState();
+    future = repo.stores();
+  }
+
+  Future<void> reload() async {
+    final next = repo.stores();
+    setState(() => future = next);
+    await next;
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         body: SafeArea(
           child: RefreshIndicator(
-            onRefresh: () async => setState(() => future = repo.stores()),
+            onRefresh: reload,
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 Row(children: [
                   Image.asset('Ativos/Marca/zecapao_app_icon.png', width: 52, height: 52),
                   const SizedBox(width: 12),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Salve, ${widget.customerName}!', style: const TextStyle(color: Colors.black54)), const Text('Vale do Capão • BA', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17))])),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Salve, ${widget.customerName}!', style: const TextStyle(color: Colors.black54)),
+                      const Text('Vale do Capão • BA', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                    ]),
+                  ),
                   const Icon(Icons.cloud_done, color: green),
                 ]),
                 const SizedBox(height: 16),
-                Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: red, borderRadius: BorderRadius.circular(26)), child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Pediu. Chegou.', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)), SizedBox(height: 5), Text('Agora o pedido chega ao painel em tempo real.', style: TextStyle(color: cream))])),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(color: red, borderRadius: BorderRadius.circular(26)),
+                  child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Pediu. Chegou.', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
+                    SizedBox(height: 5),
+                    Text('Pedido, loja e status conectados à operação.', style: TextStyle(color: cream)),
+                  ]),
+                ),
                 const SizedBox(height: 22),
                 const Text('Estabelecimentos', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 10),
                 FutureBuilder<List<Store>>(
                   future: future,
                   builder: (_, snap) {
-                    if (snap.connectionState == ConnectionState.waiting) return const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()));
+                    if (snap.connectionState == ConnectionState.waiting) {
+                      return const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()));
+                    }
                     if (snap.hasError) return Text('Erro: ${snap.error}');
-                    return Column(children: (snap.data ?? []).map((s) => Card(
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(12),
-                        leading: SizedBox(width: 60, height: 60, child: Image.asset(s.localLogo, fit: BoxFit.contain)),
-                        title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w900)),
-                        subtitle: Text('${s.description}\n${s.estimatedMinutes} min • Entrega ${money(s.deliveryFee)}'),
-                        isThreeLine: true,
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: s.isOpen ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => StorePage(store: s, customerName: widget.customerName, phone: widget.phone, repo: repo))) : null,
-                      ),
-                    )).toList());
+                    final stores = snap.data ?? [];
+                    if (stores.isEmpty) return const Text('Nenhum estabelecimento disponível.');
+                    return Column(
+                      children: stores.map((s) => Card(
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(12),
+                          leading: SizedBox(width: 60, height: 60, child: Image.asset(s.localLogo, fit: BoxFit.contain)),
+                          title: Row(children: [
+                            Expanded(child: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w900))),
+                            Text(s.isOpen ? 'ABERTO' : 'FECHADO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: s.isOpen ? green : red)),
+                          ]),
+                          subtitle: Text('${s.description}\n${s.estimatedMinutes} min • Entrega ${money(s.deliveryFee)}'),
+                          isThreeLine: true,
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: s.isOpen
+                              ? () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => StorePage(
+                                        store: s,
+                                        customerName: widget.customerName,
+                                        phone: widget.phone,
+                                        repo: repo,
+                                      ),
+                                    ),
+                                  )
+                              : null,
+                        ),
+                      )).toList(),
+                    );
                   },
-                )
+                ),
               ],
             ),
           ),
@@ -229,8 +304,13 @@ class StorePage extends StatefulWidget {
 class _StorePageState extends State<StorePage> {
   late Future<List<Product>> future;
   final cart = <String, CartLine>{};
+
   @override
-  void initState() { super.initState(); future = widget.repo.products(widget.store.id); }
+  void initState() {
+    super.initState();
+    future = widget.repo.products(widget.store.id);
+  }
+
   double get subtotal => cart.values.fold(0, (s, e) => s + e.total);
   int get count => cart.values.fold(0, (s, e) => s + e.quantity);
   void add(Product p) => setState(() => cart.update(p.id, (e) => e..quantity++, ifAbsent: () => CartLine(p)));
@@ -238,33 +318,66 @@ class _StorePageState extends State<StorePage> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: Text(widget.store.name, style: const TextStyle(fontWeight: FontWeight.w900))),
-        bottomNavigationBar: cart.isEmpty ? null : SafeArea(child: Padding(padding: const EdgeInsets.all(12), child: FilledButton(
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CheckoutPage(store: widget.store, customerName: widget.customerName, phone: widget.phone, repo: widget.repo, items: cart.values.toList()))),
-          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
-          child: Text('CARRINHO • $count item(ns) • ${money(subtotal)}', style: const TextStyle(fontWeight: FontWeight.w900)),
-        ))),
+        bottomNavigationBar: cart.isEmpty
+            ? null
+            : SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: FilledButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CheckoutPage(
+                          store: widget.store,
+                          customerName: widget.customerName,
+                          phone: widget.phone,
+                          repo: widget.repo,
+                          items: cart.values.toList(),
+                        ),
+                      ),
+                    ),
+                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
+                    child: Text('CARRINHO • $count item(ns) • ${money(subtotal)}', style: const TextStyle(fontWeight: FontWeight.w900)),
+                  ),
+                ),
+              ),
         body: FutureBuilder<List<Product>>(
           future: future,
           builder: (_, snap) {
             if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
             if (snap.hasError) return Center(child: Text('Erro: ${snap.error}'));
             final products = snap.data ?? [];
-            return ListView(padding: const EdgeInsets.all(16), children: [
-              Container(height: 140, padding: const EdgeInsets.all(18), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)), child: Image.asset(widget.store.localLogo, fit: BoxFit.contain)),
-              const SizedBox(height: 16),
-              Text(widget.store.name, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-              Text('${widget.store.estimatedMinutes} min • Entrega ${money(widget.store.deliveryFee)}', style: const TextStyle(color: Colors.black54)),
-              const SizedBox(height: 22),
-              const Text('Cardápio', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-              ...products.map((p) => Card(child: ListTile(
-                contentPadding: const EdgeInsets.all(12),
-                leading: Container(width: 60, height: 60, decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.restaurant_menu, color: red)),
-                title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w900)),
-                subtitle: Text('${p.description}\n${money(p.price)}'),
-                isThreeLine: true,
-                trailing: IconButton.filled(onPressed: () => add(p), icon: const Icon(Icons.add)),
-              )))
-            ]);
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Container(
+                  height: 140,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+                  child: Image.asset(widget.store.localLogo, fit: BoxFit.contain),
+                ),
+                const SizedBox(height: 16),
+                Text(widget.store.name, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+                Text('${widget.store.estimatedMinutes} min • Entrega ${money(widget.store.deliveryFee)}', style: const TextStyle(color: Colors.black54)),
+                const SizedBox(height: 22),
+                const Text('Cardápio', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                ...products.map((p) => Card(
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(12),
+                    leading: Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(Icons.restaurant_menu, color: red),
+                    ),
+                    title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w900)),
+                    subtitle: Text('${p.description}\n${money(p.price)}'),
+                    isThreeLine: true,
+                    trailing: IconButton.filled(onPressed: () => add(p), icon: const Icon(Icons.add)),
+                  ),
+                )),
+              ],
+            );
           },
         ),
       );
@@ -285,39 +398,81 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final notes = TextEditingController();
   String payment = 'pix';
   bool sending = false;
+
   double get subtotal => widget.items.fold(0, (s, e) => s + e.total);
   double get total => subtotal + widget.store.deliveryFee;
 
+  @override
+  void dispose() {
+    address.dispose();
+    notes.dispose();
+    super.dispose();
+  }
+
   Future<void> send() async {
-    if (address.text.trim().isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informe o endereço ou referência.'))); return; }
+    if (address.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informe o endereço ou referência.')));
+      return;
+    }
     setState(() => sending = true);
     try {
-      final orderId = await widget.repo.createOrder(store: widget.store, name: widget.customerName, phone: widget.phone, address: address.text.trim(), payment: payment, notes: notes.text.trim(), items: widget.items);
+      final orderId = await widget.repo.createOrder(
+        store: widget.store,
+        name: widget.customerName,
+        phone: widget.phone,
+        address: address.text.trim(),
+        payment: payment,
+        notes: notes.text.trim(),
+        items: widget.items,
+      );
       if (!mounted) return;
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => OrderSuccessPage(orderId: orderId, repo: widget.repo)));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível enviar: $e')));
-    } finally { if (mounted) setState(() => sending = false); }
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Finalizar pedido', style: TextStyle(fontWeight: FontWeight.w900))),
-        body: ListView(padding: const EdgeInsets.all(18), children: [
-          ...widget.items.map((e) => ListTile(title: Text('${e.quantity}× ${e.product.name}'), trailing: Text(money(e.total)))),
-          const Divider(),
-          ListTile(title: const Text('Subtotal'), trailing: Text(money(subtotal))),
-          ListTile(title: const Text('Entrega'), trailing: Text(money(widget.store.deliveryFee))),
-          ListTile(title: const Text('Total', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)), trailing: Text(money(total), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18))),
-          const SizedBox(height: 12),
-          TextField(controller: address, decoration: const InputDecoration(labelText: 'Endereço / pousada / referência', prefixIcon: Icon(Icons.location_on_outlined))),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(value: payment, decoration: const InputDecoration(labelText: 'Pagamento', prefixIcon: Icon(Icons.payments_outlined)), items: const [DropdownMenuItem(value: 'pix', child: Text('Pix')), DropdownMenuItem(value: 'card', child: Text('Cartão na entrega')), DropdownMenuItem(value: 'cash', child: Text('Dinheiro'))], onChanged: (v) => setState(() => payment = v ?? 'pix')),
-          const SizedBox(height: 12),
-          TextField(controller: notes, maxLines: 3, decoration: const InputDecoration(labelText: 'Observações')),
-          const SizedBox(height: 18),
-          FilledButton(onPressed: sending ? null : send, style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)), child: sending ? const CircularProgressIndicator() : const Text('ENVIAR PEDIDO REAL', style: TextStyle(fontWeight: FontWeight.w900))),
-        ]),
+        body: ListView(
+          padding: const EdgeInsets.all(18),
+          children: [
+            ...widget.items.map((e) => ListTile(title: Text('${e.quantity}× ${e.product.name}'), trailing: Text(money(e.total)))),
+            const Divider(),
+            ListTile(title: const Text('Subtotal'), trailing: Text(money(subtotal))),
+            ListTile(title: const Text('Entrega'), trailing: Text(money(widget.store.deliveryFee))),
+            ListTile(
+              title: const Text('Total', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+              trailing: Text(money(total), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+            ),
+            const SizedBox(height: 12),
+            TextField(controller: address, decoration: const InputDecoration(labelText: 'Endereço / pousada / referência', prefixIcon: Icon(Icons.location_on_outlined))),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: payment,
+              decoration: const InputDecoration(labelText: 'Pagamento', prefixIcon: Icon(Icons.payments_outlined)),
+              items: const [
+                DropdownMenuItem(value: 'pix', child: Text('Pix')),
+                DropdownMenuItem(value: 'card', child: Text('Cartão na entrega')),
+                DropdownMenuItem(value: 'cash', child: Text('Dinheiro')),
+              ],
+              onChanged: (v) => setState(() => payment = v ?? 'pix'),
+            ),
+            const SizedBox(height: 12),
+            TextField(controller: notes, maxLines: 3, decoration: const InputDecoration(labelText: 'Observações')),
+            const SizedBox(height: 18),
+            FilledButton(
+              onPressed: sending ? null : send,
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+              child: sending
+                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('ENVIAR PEDIDO REAL', style: TextStyle(fontWeight: FontWeight.w900)),
+            ),
+          ],
+        ),
       );
 }
 
@@ -330,30 +485,99 @@ class OrderSuccessPage extends StatefulWidget {
 }
 
 class _OrderSuccessPageState extends State<OrderSuccessPage> {
-  late Future<Map<String, dynamic>?> future;
+  Map<String, dynamic>? order;
+  Timer? timer;
+  bool loading = true;
+
   @override
-  void initState() { super.initState(); future = widget.repo.orderStatus(widget.orderId); }
-  String label(String s) => const {'pending':'Aguardando confirmação','accepted':'Aceito','preparing':'Em preparo','ready':'Pronto','out_for_delivery':'Saiu para entrega','delivered':'Entregue','cancelled':'Cancelado'}[s] ?? s;
+  void initState() {
+    super.initState();
+    refresh();
+    timer = Timer.periodic(const Duration(seconds: 4), (_) => refresh(silent: true));
+  }
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-        body: SafeArea(child: Center(child: Padding(padding: const EdgeInsets.all(26), child: FutureBuilder<Map<String, dynamic>?>(
-          future: future,
-          builder: (_, snap) {
-            final o = snap.data;
-            return Column(mainAxisSize: MainAxisSize.min, children: [
-              const CircleAvatar(radius: 42, backgroundColor: green, child: Icon(Icons.check, color: Colors.white, size: 44)),
-              const SizedBox(height: 20),
-              const Text('Pedido enviado!', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 10),
-              Text('Pedido #${widget.orderId.substring(0, 8).toUpperCase()}', style: const TextStyle(color: Colors.black54)),
-              const SizedBox(height: 18),
-              if (o != null) Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(18)), child: Column(children: [const Text('STATUS ATUAL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900)), const SizedBox(height: 6), Text(label(o['status']), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: green)), const SizedBox(height: 4), Text('Total ${money(double.tryParse('${o['total']}') ?? 0)}')])),
-              const SizedBox(height: 18),
-              OutlinedButton.icon(onPressed: () => setState(() => future = widget.repo.orderStatus(widget.orderId)), icon: const Icon(Icons.refresh), label: const Text('ATUALIZAR STATUS')),
-              const SizedBox(height: 8),
-              FilledButton(onPressed: () => Navigator.popUntil(context, (r) => r.isFirst), child: const Text('VOLTAR AO INÍCIO')),
-            ]);
-          },
-        )))),
-      );
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> refresh({bool silent = false}) async {
+    try {
+      final next = await widget.repo.orderStatus(widget.orderId);
+      if (!mounted) return;
+      if (next != null) setState(() { order = next; loading = false; });
+    } catch (_) {
+      if (!silent && mounted) setState(() => loading = false);
+    }
+  }
+
+  String label(String s) => const {
+        'pending': 'Aguardando confirmação',
+        'accepted': 'Aceito',
+        'preparing': 'Em preparo',
+        'ready': 'Pronto',
+        'out_for_delivery': 'Saiu para entrega',
+        'delivered': 'Entregue',
+        'cancelled': 'Cancelado',
+      }[s] ?? s;
+
+  IconData iconFor(String s) => const {
+        'pending': Icons.schedule,
+        'accepted': Icons.thumb_up_alt_outlined,
+        'preparing': Icons.restaurant,
+        'ready': Icons.check_circle_outline,
+        'out_for_delivery': Icons.delivery_dining,
+        'delivered': Icons.home_filled,
+        'cancelled': Icons.cancel_outlined,
+      }[s] ?? Icons.receipt_long;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = '${order?['status'] ?? 'pending'}';
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(26),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(radius: 44, backgroundColor: status == 'cancelled' ? red : green, child: Icon(iconFor(status), color: Colors.white, size: 44)),
+                const SizedBox(height: 20),
+                const Text('Pedido enviado!', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 8),
+                Text('Pedido #${widget.orderId.substring(0, 8).toUpperCase()}', style: const TextStyle(color: Colors.black54)),
+                const SizedBox(height: 18),
+                if (loading) const CircularProgressIndicator(),
+                if (!loading)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(18)),
+                    child: Column(children: [
+                      const Text('STATUS ATUAL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 7),
+                      Text(label(status), textAlign: TextAlign.center, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: status == 'cancelled' ? red : green)),
+                      const SizedBox(height: 7),
+                      if (order != null) Text('Total ${money(double.tryParse('${order!['total']}') ?? 0)}'),
+                      const SizedBox(height: 10),
+                      const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.sync, size: 15, color: Colors.black45),
+                        SizedBox(width: 5),
+                        Text('Atualização automática', style: TextStyle(fontSize: 12, color: Colors.black45)),
+                      ]),
+                    ]),
+                  ),
+                const SizedBox(height: 20),
+                OutlinedButton.icon(onPressed: refresh, icon: const Icon(Icons.refresh), label: const Text('ATUALIZAR AGORA')),
+                const SizedBox(height: 8),
+                FilledButton(onPressed: () => Navigator.popUntil(context, (r) => r.isFirst), child: const Text('VOLTAR AO INÍCIO')),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
