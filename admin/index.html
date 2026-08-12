@@ -16,9 +16,11 @@
         <h1>Zé Capão Delivery</h1>
         <p class="muted">Gestão de parceiros e produtos em tempo real.</p>
         <form id="loginForm" class="stack">
-          <label>E-mail<input id="email" type="email" required placeholder="admin@zecapao.com" /></label>
-          <label>Senha<input id="password" type="password" required placeholder="••••••••" /></label>
+          <label>E-mail<input id="email" type="email" required value="carlosright@gmail.com" /></label>
+          <label>Senha<input id="password" type="password" required minlength="6" placeholder="Mínimo 6 caracteres" /></label>
           <button class="primary" type="submit">Entrar no painel</button>
+          <button class="ghost full" type="button" id="signupBtn">Criar meu primeiro acesso</button>
+          <p class="muted" style="font-size:12px">No primeiro acesso, crie sua senha. Se a confirmação de e-mail estiver ativa, confirme a mensagem recebida antes de entrar.</p>
           <p id="loginError" class="error"></p>
         </form>
       </div>
