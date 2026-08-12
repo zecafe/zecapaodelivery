@@ -18,44 +18,22 @@ Future<void> main() async {
 String money(num value) => 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
 
 class Store {
-  final String id;
-  final String name;
-  final String slug;
-  final String description;
-  final String? logoUrl;
-  final double deliveryFee;
-  final double minOrder;
+  final String id, name, slug, description;
+  final double deliveryFee, minOrder;
   final int estimatedMinutes;
   final bool isOpen;
-
-  const Store({
-    required this.id,
-    required this.name,
-    required this.slug,
-    required this.description,
-    required this.logoUrl,
-    required this.deliveryFee,
-    required this.minOrder,
-    required this.estimatedMinutes,
-    required this.isOpen,
-  });
-
-  factory Store.fromMap(Map<String, dynamic> map) {
-    return Store(
-      id: map['id'] as String,
-      name: map['name'] as String? ?? '',
-      slug: map['slug'] as String? ?? '',
-      description: map['description'] as String? ?? '',
-      logoUrl: map['logo_url'] as String?,
-      deliveryFee: double.tryParse('${map['delivery_fee'] ?? 0}') ?? 0,
-      minOrder: double.tryParse('${map['min_order'] ?? 0}') ?? 0,
-      estimatedMinutes: map['estimated_minutes'] as int? ?? 40,
-      isOpen: map['is_open'] as bool? ?? false,
-    );
-  }
+  Store.fromMap(Map<String, dynamic> m)
+      : id = m['id'],
+        name = m['name'] ?? '',
+        slug = m['slug'] ?? '',
+        description = m['description'] ?? '',
+        deliveryFee = double.tryParse('${m['delivery_fee'] ?? 0}') ?? 0,
+        minOrder = double.tryParse('${m['min_order'] ?? 0}') ?? 0,
+        estimatedMinutes = m['estimated_minutes'] ?? 40,
+        isOpen = m['is_open'] ?? false;
 
   String get localLogo {
-    const logos = <String, String>{
+    const logos = {
       'zecafe': 'Ativos/Marca/zecafe.jpg',
       'cafe-duvalle': 'Ativos/Marca/cafe_duvalle.jpg',
       'frutos': 'Ativos/Marca/frutos.jpg',
@@ -66,701 +44,316 @@ class Store {
 }
 
 class Product {
-  final String id;
-  final String storeId;
-  final String name;
-  final String description;
+  final String id, storeId, name, description, category;
   final double price;
-  final String? imageUrl;
-  final String category;
-
-  const Product({
-    required this.id,
-    required this.storeId,
-    required this.name,
-    required this.description,
-    required this.price,
-    required this.imageUrl,
-    required this.category,
-  });
-
-  factory Product.fromMap(Map<String, dynamic> map) {
-    return Product(
-      id: map['id'] as String,
-      storeId: map['store_id'] as String,
-      name: map['name'] as String? ?? '',
-      description: map['description'] as String? ?? '',
-      price: double.tryParse('${map['price'] ?? 0}') ?? 0,
-      imageUrl: map['image_url'] as String?,
-      category: map['category'] as String? ?? '',
-    );
-  }
+  Product.fromMap(Map<String, dynamic> m)
+      : id = m['id'],
+        storeId = m['store_id'],
+        name = m['name'] ?? '',
+        description = m['description'] ?? '',
+        category = m['category'] ?? '',
+        price = double.tryParse('${m['price'] ?? 0}') ?? 0;
 }
 
 class CartLine {
   final Product product;
   int quantity;
-
   CartLine(this.product, {this.quantity = 1});
-
   double get total => product.price * quantity;
 }
 
-class MarketplaceRepository {
-  final SupabaseClient client = Supabase.instance.client;
+class Repo {
+  final client = Supabase.instance.client;
 
-  Future<List<Store>> fetchStores() async {
-    final data = await client
-        .from('stores')
-        .select('id,name,slug,description,logo_url,delivery_fee,min_order,estimated_minutes,is_open')
-        .eq('is_active', true)
-        .order('name');
-    return (data as List<dynamic>)
-        .map((item) => Store.fromMap(item as Map<String, dynamic>))
-        .toList();
+  Future<List<Store>> stores() async {
+    final data = await client.from('stores').select().eq('is_active', true).order('name');
+    return (data as List).map((e) => Store.fromMap(e)).toList();
   }
 
-  Future<List<Product>> fetchProducts(String storeId) async {
-    final data = await client
-        .from('products')
-        .select('id,store_id,name,description,price,image_url,category')
-        .eq('store_id', storeId)
-        .eq('is_available', true)
-        .order('sort_order');
-    return (data as List<dynamic>)
-        .map((item) => Product.fromMap(item as Map<String, dynamic>))
-        .toList();
+  Future<List<Product>> products(String storeId) async {
+    final data = await client.from('products').select().eq('store_id', storeId).eq('is_available', true).order('sort_order');
+    return (data as List).map((e) => Product.fromMap(e)).toList();
+  }
+
+  Future<String> createOrder({
+    required Store store,
+    required String name,
+    required String phone,
+    required String address,
+    required String payment,
+    required String notes,
+    required List<CartLine> items,
+  }) async {
+    final result = await client.rpc('create_guest_order', params: {
+      'p_store_id': store.id,
+      'p_customer_name': name,
+      'p_customer_phone': phone,
+      'p_delivery_address': address,
+      'p_payment_method': payment,
+      'p_notes': notes,
+      'p_items': items.map((e) => {'product_id': e.product.id, 'quantity': e.quantity}).toList(),
+    });
+    return result.toString();
+  }
+
+  Future<Map<String, dynamic>?> orderStatus(String orderId) async {
+    final data = await client.rpc('get_guest_order_status', params: {'p_order_id': orderId});
+    final list = data as List;
+    return list.isEmpty ? null : Map<String, dynamic>.from(list.first);
   }
 }
 
 class ZecapaoApp extends StatelessWidget {
   const ZecapaoApp({super.key});
-
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Zé Capão Delivery',
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF8F4EC),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: red,
-          primary: red,
-          secondary: yellow,
+  Widget build(BuildContext context) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Zé Capão Delivery',
+        theme: ThemeData(
+          useMaterial3: true,
+          scaffoldBackgroundColor: const Color(0xFFF8F4EC),
+          colorScheme: ColorScheme.fromSeed(seedColor: red, primary: red, secondary: yellow),
+          inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
         ),
-      ),
-      home: const SignupPage(),
-    );
-  }
+        home: const SignupPage(),
+      );
 }
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
-
   @override
   State<SignupPage> createState() => _SignupPageState();
 }
 
 class _SignupPageState extends State<SignupPage> {
-  final nameController = TextEditingController();
-  final phoneController = TextEditingController();
-  bool acceptedTerms = false;
-
+  final name = TextEditingController();
+  final phone = TextEditingController();
+  bool terms = false;
   @override
-  void dispose() {
-    nameController.dispose();
-    phoneController.dispose();
-    super.dispose();
-  }
-
-  void enterApp() {
-    final name = nameController.text.trim().isEmpty
-        ? 'capoeira'
-        : nameController.text.trim();
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => HomePage(userName: name)),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            const SizedBox(height: 30),
-            Center(
-              child: Image.asset(
-                'Ativos/Marca/zecapao_app_icon.png',
-                height: 110,
-                fit: BoxFit.contain,
+  Widget build(BuildContext context) => Scaffold(
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              const SizedBox(height: 28),
+              Center(child: Image.asset('Ativos/Marca/zecapao_app_icon.png', height: 108)),
+              const SizedBox(height: 24),
+              const Text('Chegue mais. 🌵', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              const Text('Seu pedido agora vai de verdade para o painel do Zé Capão.', style: TextStyle(color: Colors.black54, fontSize: 15)),
+              const SizedBox(height: 24),
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Seu nome', prefixIcon: Icon(Icons.person_outline))),
+              const SizedBox(height: 12),
+              TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'WhatsApp', prefixIcon: Icon(Icons.phone_outlined))),
+              CheckboxListTile(contentPadding: EdgeInsets.zero, value: terms, onChanged: (v) => setState(() => terms = v ?? false), title: const Text('Aceito os termos e a política de privacidade', style: TextStyle(fontSize: 13))),
+              FilledButton(
+                onPressed: terms
+                    ? () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomePage(customerName: name.text.trim().isEmpty ? 'Cliente' : name.text.trim(), phone: phone.text.trim())))
+                    : null,
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
+                child: const Text('ENTRAR NO ZÉ CAPÃO', style: TextStyle(fontWeight: FontWeight.w900)),
               ),
-            ),
-            const SizedBox(height: 22),
-            const Text(
-              'Chegue mais. 🌵',
-              style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Agora o Zé Capão já conversa com a nuvem. Seu cadastro ainda é simples, mas os estabelecimentos e produtos passam a vir do servidor.',
-              style: TextStyle(fontSize: 15, color: Colors.black54, height: 1.45),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Como podemos te chamar?',
-                prefixIcon: Icon(Icons.person_outline),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'WhatsApp',
-                prefixIcon: Icon(Icons.phone_outlined),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              value: acceptedTerms,
-              onChanged: (value) => setState(() => acceptedTerms = value ?? false),
-              title: const Text(
-                'Aceito os termos e a política de privacidade',
-                style: TextStyle(fontSize: 13),
-              ),
-            ),
-            FilledButton(
-              onPressed: acceptedTerms ? enterApp : null,
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
-              child: const Text(
-                'ENTRAR NO ZÉ CAPÃO',
-                style: TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Center(
-              child: Text(
-                'Foundation 1.0 • Supabase conectado',
-                style: TextStyle(color: Colors.black38, fontSize: 12),
-              ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              const Center(child: Text('Pedido Real 1.0', style: TextStyle(color: Colors.black38))),
+            ],
+          ),
         ),
-      ),
-    );
-  }
+      );
 }
 
 class HomePage extends StatefulWidget {
-  final String userName;
-
-  const HomePage({super.key, required this.userName});
-
+  final String customerName, phone;
+  const HomePage({super.key, required this.customerName, required this.phone});
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  final repository = MarketplaceRepository();
-  late Future<List<Store>> storesFuture;
-  String query = '';
-
+  final repo = Repo();
+  late Future<List<Store>> future;
   @override
-  void initState() {
-    super.initState();
-    storesFuture = repository.fetchStores();
-  }
-
-  Future<void> refresh() async {
-    setState(() {
-      storesFuture = repository.fetchStores();
-    });
-    await storesFuture;
-  }
-
+  void initState() { super.initState(); future = repo.stores(); }
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: refresh,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 26),
-            children: [
-              Row(
-                children: [
-                  Image.asset(
-                    'Ativos/Marca/zecapao_app_icon.png',
-                    width: 52,
-                    height: 52,
-                    fit: BoxFit.contain,
-                  ),
+  Widget build(BuildContext context) => Scaffold(
+        body: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: () async => setState(() => future = repo.stores()),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Row(children: [
+                  Image.asset('Ativos/Marca/zecapao_app_icon.png', width: 52, height: 52),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Salve, ${widget.userName}!',
-                          style: const TextStyle(color: Colors.black54),
-                        ),
-                        const Text(
-                          'Vale do Capão • BA',
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.cloud_done_outlined, color: green),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: red,
-                  borderRadius: BorderRadius.circular(28),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Pediu. Chegou.',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Salve, ${widget.customerName}!', style: const TextStyle(color: Colors.black54)), const Text('Vale do Capão • BA', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17))])),
+                  const Icon(Icons.cloud_done, color: green),
+                ]),
+                const SizedBox(height: 16),
+                Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: red, borderRadius: BorderRadius.circular(26)), child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Pediu. Chegou.', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)), SizedBox(height: 5), Text('Agora o pedido chega ao painel em tempo real.', style: TextStyle(color: cream))])),
+                const SizedBox(height: 22),
+                const Text('Estabelecimentos', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 10),
+                FutureBuilder<List<Store>>(
+                  future: future,
+                  builder: (_, snap) {
+                    if (snap.connectionState == ConnectionState.waiting) return const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()));
+                    if (snap.hasError) return Text('Erro: ${snap.error}');
+                    return Column(children: (snap.data ?? []).map((s) => Card(
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(12),
+                        leading: SizedBox(width: 60, height: 60, child: Image.asset(s.localLogo, fit: BoxFit.contain)),
+                        title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w900)),
+                        subtitle: Text('${s.description}\n${s.estimatedMinutes} min • Entrega ${money(s.deliveryFee)}'),
+                        isThreeLine: true,
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: s.isOpen ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => StorePage(store: s, customerName: widget.customerName, phone: widget.phone, repo: repo))) : null,
                       ),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      'Agora com dados reais vindos do servidor.',
-                      style: TextStyle(color: cream, fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              TextField(
-                onChanged: (value) => setState(() => query = value),
-                decoration: const InputDecoration(
-                  hintText: 'Buscar estabelecimento...',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 22),
-              const Text(
-                'Estabelecimentos online',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 10),
-              FutureBuilder<List<Store>>(
-                future: storesFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Padding(
-                      padding: EdgeInsets.all(36),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-
-                  if (snapshot.hasError) {
-                    return ErrorCard(
-                      message: 'Não consegui consultar o servidor.\n${snapshot.error}',
-                      onRetry: refresh,
-                    );
-                  }
-
-                  final allStores = snapshot.data ?? const <Store>[];
-                  final filtered = allStores.where((store) {
-                    final text = '${store.name} ${store.description}'.toLowerCase();
-                    return text.contains(query.toLowerCase());
-                  }).toList();
-
-                  if (filtered.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32),
-                      child: Center(child: Text('Nenhum estabelecimento encontrado.')),
-                    );
-                  }
-
-                  return Column(
-                    children: filtered
-                        .map((store) => StoreCard(store: store, repository: repository))
-                        .toList(),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class ErrorCard extends StatelessWidget {
-  final String message;
-  final Future<void> Function() onRetry;
-
-  const ErrorCard({super.key, required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          children: [
-            const Icon(Icons.cloud_off, color: red, size: 36),
-            const SizedBox(height: 10),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: onRetry, child: const Text('TENTAR NOVAMENTE')),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class StoreCard extends StatelessWidget {
-  final Store store;
-  final MarketplaceRepository repository;
-
-  const StoreCard({super.key, required this.store, required this.repository});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(12),
-        leading: SizedBox(
-          width: 64,
-          height: 64,
-          child: store.logoUrl != null && store.logoUrl!.isNotEmpty
-              ? Image.network(
-                  store.logoUrl!,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Image.asset(store.localLogo, fit: BoxFit.contain),
+                    )).toList());
+                  },
                 )
-              : Image.asset(store.localLogo, fit: BoxFit.contain),
-        ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                store.name,
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
+              ],
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: store.isOpen ? const Color(0xFFE5F5E8) : const Color(0xFFFFE4E0),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                store.isOpen ? 'ABERTO' : 'FECHADO',
-                style: TextStyle(
-                  color: store.isOpen ? green : red,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 5),
-          child: Text(
-            '${store.description}\n${store.estimatedMinutes} min • Entrega ${money(store.deliveryFee)}',
           ),
         ),
-        isThreeLine: true,
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => StorePage(store: store, repository: repository),
-            ),
-          );
-        },
-      ),
-    );
-  }
+      );
 }
 
 class StorePage extends StatefulWidget {
   final Store store;
-  final MarketplaceRepository repository;
-
-  const StorePage({
-    super.key,
-    required this.store,
-    required this.repository,
-  });
-
+  final String customerName, phone;
+  final Repo repo;
+  const StorePage({super.key, required this.store, required this.customerName, required this.phone, required this.repo});
   @override
   State<StorePage> createState() => _StorePageState();
 }
 
 class _StorePageState extends State<StorePage> {
-  late Future<List<Product>> productsFuture;
-  final Map<String, CartLine> cart = {};
+  late Future<List<Product>> future;
+  final cart = <String, CartLine>{};
+  @override
+  void initState() { super.initState(); future = widget.repo.products(widget.store.id); }
+  double get subtotal => cart.values.fold(0, (s, e) => s + e.total);
+  int get count => cart.values.fold(0, (s, e) => s + e.quantity);
+  void add(Product p) => setState(() => cart.update(p.id, (e) => e..quantity++, ifAbsent: () => CartLine(p)));
 
   @override
-  void initState() {
-    super.initState();
-    productsFuture = widget.repository.fetchProducts(widget.store.id);
-  }
-
-  int get itemCount => cart.values.fold(0, (sum, line) => sum + line.quantity);
-  double get subtotal => cart.values.fold(0, (sum, line) => sum + line.total);
-
-  void add(Product product) {
-    setState(() {
-      final current = cart[product.id];
-      if (current == null) {
-        cart[product.id] = CartLine(product);
-      } else {
-        current.quantity++;
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.store.name, style: const TextStyle(fontWeight: FontWeight.w900)),
-      ),
-      bottomNavigationBar: cart.isEmpty
-          ? null
-          : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: FilledButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CartPage(
-                          store: widget.store,
-                          lines: cart.values.toList(),
-                        ),
-                      ),
-                    );
-                  },
-                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
-                  child: Text(
-                    'VER CARRINHO • $itemCount item(ns) • ${money(subtotal)}',
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                ),
-              ),
-            ),
-      body: ListView(
-        padding: const EdgeInsets.all(18),
-        children: [
-          Container(
-            height: 150,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: widget.store.logoUrl != null && widget.store.logoUrl!.isNotEmpty
-                ? Image.network(
-                    widget.store.logoUrl!,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => Image.asset(widget.store.localLogo),
-                  )
-                : Image.asset(widget.store.localLogo),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            widget.store.name,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 4),
-          Text(widget.store.description, style: const TextStyle(color: Colors.black54)),
-          const SizedBox(height: 8),
-          Text(
-            '${widget.store.estimatedMinutes} min • Entrega ${money(widget.store.deliveryFee)} • Pedido mín. ${money(widget.store.minOrder)}',
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 24),
-          const Text('Cardápio do servidor', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          FutureBuilder<List<Product>>(
-            future: productsFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: Padding(
-                  padding: EdgeInsets.all(30),
-                  child: CircularProgressIndicator(),
-                ));
-              }
-              if (snapshot.hasError) {
-                return Text('Erro ao carregar cardápio: ${snapshot.error}');
-              }
-              final products = snapshot.data ?? const <Product>[];
-              if (products.isEmpty) {
-                return const Text('Este estabelecimento ainda não cadastrou produtos.');
-              }
-              return Column(
-                children: products.map((product) {
-                  return Card(
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.all(12),
-                      leading: Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: cream,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: product.imageUrl != null && product.imageUrl!.isNotEmpty
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(product.imageUrl!, fit: BoxFit.cover),
-                              )
-                            : const Icon(Icons.coffee, color: red, size: 30),
-                      ),
-                      title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.w900)),
-                      subtitle: Text('${product.description}\n${money(product.price)}'),
-                      isThreeLine: true,
-                      trailing: IconButton.filled(
-                        onPressed: () => add(product),
-                        icon: const Icon(Icons.add),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: Text(widget.store.name, style: const TextStyle(fontWeight: FontWeight.w900))),
+        bottomNavigationBar: cart.isEmpty ? null : SafeArea(child: Padding(padding: const EdgeInsets.all(12), child: FilledButton(
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CheckoutPage(store: widget.store, customerName: widget.customerName, phone: widget.phone, repo: widget.repo, items: cart.values.toList()))),
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
+          child: Text('CARRINHO • $count item(ns) • ${money(subtotal)}', style: const TextStyle(fontWeight: FontWeight.w900)),
+        ))),
+        body: FutureBuilder<List<Product>>(
+          future: future,
+          builder: (_, snap) {
+            if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+            if (snap.hasError) return Center(child: Text('Erro: ${snap.error}'));
+            final products = snap.data ?? [];
+            return ListView(padding: const EdgeInsets.all(16), children: [
+              Container(height: 140, padding: const EdgeInsets.all(18), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)), child: Image.asset(widget.store.localLogo, fit: BoxFit.contain)),
+              const SizedBox(height: 16),
+              Text(widget.store.name, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+              Text('${widget.store.estimatedMinutes} min • Entrega ${money(widget.store.deliveryFee)}', style: const TextStyle(color: Colors.black54)),
+              const SizedBox(height: 22),
+              const Text('Cardápio', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+              ...products.map((p) => Card(child: ListTile(
+                contentPadding: const EdgeInsets.all(12),
+                leading: Container(width: 60, height: 60, decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.restaurant_menu, color: red)),
+                title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w900)),
+                subtitle: Text('${p.description}\n${money(p.price)}'),
+                isThreeLine: true,
+                trailing: IconButton.filled(onPressed: () => add(p), icon: const Icon(Icons.add)),
+              )))
+            ]);
+          },
+        ),
+      );
 }
 
-class CartPage extends StatefulWidget {
+class CheckoutPage extends StatefulWidget {
   final Store store;
-  final List<CartLine> lines;
-
-  const CartPage({super.key, required this.store, required this.lines});
-
+  final String customerName, phone;
+  final Repo repo;
+  final List<CartLine> items;
+  const CheckoutPage({super.key, required this.store, required this.customerName, required this.phone, required this.repo, required this.items});
   @override
-  State<CartPage> createState() => _CartPageState();
+  State<CheckoutPage> createState() => _CheckoutPageState();
 }
 
-class _CartPageState extends State<CartPage> {
-  double get subtotal => widget.lines.fold(0, (sum, line) => sum + line.total);
+class _CheckoutPageState extends State<CheckoutPage> {
+  final address = TextEditingController();
+  final notes = TextEditingController();
+  String payment = 'pix';
+  bool sending = false;
+  double get subtotal => widget.items.fold(0, (s, e) => s + e.total);
   double get total => subtotal + widget.store.deliveryFee;
 
-  void change(CartLine line, int delta) {
-    setState(() {
-      line.quantity += delta;
-      if (line.quantity <= 0) {
-        widget.lines.remove(line);
-      }
-    });
+  Future<void> send() async {
+    if (address.text.trim().isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informe o endereço ou referência.'))); return; }
+    setState(() => sending = true);
+    try {
+      final orderId = await widget.repo.createOrder(store: widget.store, name: widget.customerName, phone: widget.phone, address: address.text.trim(), payment: payment, notes: notes.text.trim(), items: widget.items);
+      if (!mounted) return;
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => OrderSuccessPage(orderId: orderId, repo: widget.repo)));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível enviar: $e')));
+    } finally { if (mounted) setState(() => sending = false); }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Seu carrinho', style: TextStyle(fontWeight: FontWeight.w900))),
-      body: ListView(
-        padding: const EdgeInsets.all(18),
-        children: [
-          Text(widget.store.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          ...widget.lines.map((line) {
-            return Card(
-              child: ListTile(
-                title: Text(line.product.name),
-                subtitle: Text('${money(line.product.price)} cada'),
-                trailing: SizedBox(
-                  width: 128,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      IconButton(onPressed: () => change(line, -1), icon: const Icon(Icons.remove_circle_outline)),
-                      Text('${line.quantity}', style: const TextStyle(fontWeight: FontWeight.w900)),
-                      IconButton(onPressed: () => change(line, 1), icon: const Icon(Icons.add_circle_outline)),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
-          const Divider(height: 30),
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Finalizar pedido', style: TextStyle(fontWeight: FontWeight.w900))),
+        body: ListView(padding: const EdgeInsets.all(18), children: [
+          ...widget.items.map((e) => ListTile(title: Text('${e.quantity}× ${e.product.name}'), trailing: Text(money(e.total)))),
+          const Divider(),
           ListTile(title: const Text('Subtotal'), trailing: Text(money(subtotal))),
           ListTile(title: const Text('Entrega'), trailing: Text(money(widget.store.deliveryFee))),
-          ListTile(
-            title: const Text('Total', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-            trailing: Text(
-              money(total),
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-            ),
-          ),
+          ListTile(title: const Text('Total', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)), trailing: Text(money(total), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18))),
           const SizedBox(height: 12),
-          const TextField(
-            decoration: InputDecoration(
-              labelText: 'Endereço / pousada / referência',
-              prefixIcon: Icon(Icons.location_on_outlined),
-              border: OutlineInputBorder(),
-            ),
-          ),
+          TextField(controller: address, decoration: const InputDecoration(labelText: 'Endereço / pousada / referência', prefixIcon: Icon(Icons.location_on_outlined))),
           const SizedBox(height: 12),
-          const TextField(
-            decoration: InputDecoration(
-              labelText: 'Observações',
-              prefixIcon: Icon(Icons.notes),
-              border: OutlineInputBorder(),
-            ),
-          ),
+          DropdownButtonFormField<String>(value: payment, decoration: const InputDecoration(labelText: 'Pagamento', prefixIcon: Icon(Icons.payments_outlined)), items: const [DropdownMenuItem(value: 'pix', child: Text('Pix')), DropdownMenuItem(value: 'card', child: Text('Cartão na entrega')), DropdownMenuItem(value: 'cash', child: Text('Dinheiro'))], onChanged: (v) => setState(() => payment = v ?? 'pix')),
+          const SizedBox(height: 12),
+          TextField(controller: notes, maxLines: 3, decoration: const InputDecoration(labelText: 'Observações')),
           const SizedBox(height: 18),
-          FilledButton(
-            onPressed: widget.lines.isEmpty
-                ? null
-                : () {
-                    showDialog<void>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Fundação conectada ✅'),
-                        content: const Text(
-                          'Este carrinho já usa produtos reais do Supabase. A gravação do pedido no banco será a próxima etapa.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('OK'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
-            child: const Text('VALIDAR CARRINHO', style: TextStyle(fontWeight: FontWeight.w900)),
-          ),
-        ],
-      ),
-    );
-  }
+          FilledButton(onPressed: sending ? null : send, style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)), child: sending ? const CircularProgressIndicator() : const Text('ENVIAR PEDIDO REAL', style: TextStyle(fontWeight: FontWeight.w900))),
+        ]),
+      );
+}
+
+class OrderSuccessPage extends StatefulWidget {
+  final String orderId;
+  final Repo repo;
+  const OrderSuccessPage({super.key, required this.orderId, required this.repo});
+  @override
+  State<OrderSuccessPage> createState() => _OrderSuccessPageState();
+}
+
+class _OrderSuccessPageState extends State<OrderSuccessPage> {
+  late Future<Map<String, dynamic>?> future;
+  @override
+  void initState() { super.initState(); future = widget.repo.orderStatus(widget.orderId); }
+  String label(String s) => const {'pending':'Aguardando confirmação','accepted':'Aceito','preparing':'Em preparo','ready':'Pronto','out_for_delivery':'Saiu para entrega','delivered':'Entregue','cancelled':'Cancelado'}[s] ?? s;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: SafeArea(child: Center(child: Padding(padding: const EdgeInsets.all(26), child: FutureBuilder<Map<String, dynamic>?>(
+          future: future,
+          builder: (_, snap) {
+            final o = snap.data;
+            return Column(mainAxisSize: MainAxisSize.min, children: [
+              const CircleAvatar(radius: 42, backgroundColor: green, child: Icon(Icons.check, color: Colors.white, size: 44)),
+              const SizedBox(height: 20),
+              const Text('Pedido enviado!', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 10),
+              Text('Pedido #${widget.orderId.substring(0, 8).toUpperCase()}', style: const TextStyle(color: Colors.black54)),
+              const SizedBox(height: 18),
+              if (o != null) Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(18)), child: Column(children: [const Text('STATUS ATUAL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900)), const SizedBox(height: 6), Text(label(o['status']), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: green)), const SizedBox(height: 4), Text('Total ${money(double.tryParse('${o['total']}') ?? 0)}')])),
+              const SizedBox(height: 18),
+              OutlinedButton.icon(onPressed: () => setState(() => future = widget.repo.orderStatus(widget.orderId)), icon: const Icon(Icons.refresh), label: const Text('ATUALIZAR STATUS')),
+              const SizedBox(height: 8),
+              FilledButton(onPressed: () => Navigator.popUntil(context, (r) => r.isFirst), child: const Text('VOLTAR AO INÍCIO')),
+            ]);
+          },
+        )))),
+      );
 }
