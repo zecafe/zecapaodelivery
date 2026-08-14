@@ -11,89 +11,23 @@
   <div id="app">
     <section id="loginView" class="screen center-screen">
       <div class="login-card">
-        <div class="brand-badge">ZC</div>
-        <p class="eyebrow">PAINEL ADMIN 1.0</p>
-        <h1>Zé Capão Delivery</h1>
-        <p class="muted">Operação em tempo real.</p>
-        <form id="loginForm" class="stack">
-          <label>E-mail<input id="email" type="email" required value="carlosright@gmail.com" /></label>
-          <label>Senha<input id="password" type="password" required minlength="6" placeholder="Mínimo 6 caracteres" /></label>
-          <button class="primary" type="submit">Entrar no painel</button>
-          <button class="ghost full" type="button" id="signupBtn">Criar meu primeiro acesso</button>
-          <p id="loginError" class="error"></p>
-        </form>
+        <div class="brand-badge">ZC</div><p class="eyebrow">PAINEL ADMIN 1.1</p><h1>Zé Capão Delivery</h1><p class="muted">Operação em tempo real.</p>
+        <form id="loginForm" class="stack"><label>E-mail<input id="email" type="email" required value="carlosright@gmail.com" /></label><label>Senha<input id="password" type="password" required minlength="6" placeholder="Mínimo 6 caracteres" /></label><button class="primary" type="submit">Entrar no painel</button><button class="ghost full" type="button" id="signupBtn">Criar meu primeiro acesso</button><p id="loginError" class="error"></p></form>
       </div>
     </section>
-
     <section id="adminView" class="screen hidden">
-      <aside class="sidebar">
-        <div>
-          <div class="brand-row"><div class="brand-badge small">ZC</div><div><strong>Zé Capão</strong><span>Admin 1.0</span></div></div>
-          <nav>
-            <button class="nav-item active" data-section="dashboard">Visão geral</button>
-            <button class="nav-item" data-section="orders">Pedidos</button>
-            <button class="nav-item" data-section="stores">Estabelecimentos</button>
-            <button class="nav-item" data-section="products">Produtos</button>
-          </nav>
-        </div>
-        <div><div id="adminEmail" class="admin-email"></div><button id="logoutBtn" class="ghost full">Sair</button></div>
-      </aside>
-
+      <aside class="sidebar"><div><div class="brand-row"><div class="brand-badge small">ZC</div><div><strong>Zé Capão</strong><span>Admin 1.1</span></div></div><nav><button class="nav-item active" data-section="dashboard">Visão geral</button><button class="nav-item" data-section="orders">Pedidos</button><button class="nav-item" data-section="stores">Estabelecimentos</button><button class="nav-item" data-section="products">Produtos</button></nav></div><div><div id="adminEmail" class="admin-email"></div><button id="logoutBtn" class="ghost full">Sair</button></div></aside>
       <main class="content">
         <header class="topbar"><div><p class="eyebrow">ZÉ CAPÃO DELIVERY</p><h2 id="pageTitle">Visão geral</h2></div><button id="refreshBtn" class="ghost">Atualizar dados</button></header>
-
-        <section id="dashboardSection" class="section-view">
-          <div class="stats-grid">
-            <article class="stat-card"><span>Pedidos</span><strong id="orderCount">0</strong></article>
-            <article class="stat-card"><span>Aguardando</span><strong id="pendingCount">0</strong></article>
-            <article class="stat-card"><span>Estabelecimentos</span><strong id="storeCount">0</strong></article>
-            <article class="stat-card"><span>Produtos</span><strong id="productCount">0</strong></article>
-          </div>
-          <div class="panel"><div class="panel-head"><div><p class="eyebrow">TEMPO REAL</p><h3>Pedidos recentes</h3></div></div><div id="dashboardList" class="dashboard-list"></div></div>
-        </section>
-
-        <section id="ordersSection" class="section-view hidden">
-          <div class="section-actions"><strong>Fila operacional</strong><button id="refreshOrdersBtn" class="ghost">Atualizar pedidos</button></div>
-          <div id="ordersWrap" class="cards-grid"></div>
-        </section>
-
-        <section id="storesSection" class="section-view hidden">
-          <div class="section-actions"><button id="newStoreBtn" class="primary">+ Novo estabelecimento</button></div>
-          <div id="storesGrid" class="cards-grid"></div>
-        </section>
-
-        <section id="productsSection" class="section-view hidden">
-          <div class="section-actions"><select id="storeFilter"><option value="">Todas as lojas</option></select><button id="newProductBtn" class="primary">+ Novo produto</button></div>
-          <div id="productsTableWrap" class="panel table-wrap"></div>
-        </section>
+        <section id="dashboardSection" class="section-view"><div class="stats-grid"><article class="stat-card"><span>Pedidos</span><strong id="orderCount">0</strong></article><article class="stat-card"><span>Aguardando</span><strong id="pendingCount">0</strong></article><article class="stat-card"><span>Estabelecimentos</span><strong id="storeCount">0</strong></article><article class="stat-card"><span>Produtos</span><strong id="productCount">0</strong></article></div><div class="panel"><div class="panel-head"><div><p class="eyebrow">TEMPO REAL</p><h3>Pedidos recentes</h3></div></div><div id="dashboardList" class="dashboard-list"></div></div></section>
+        <section id="ordersSection" class="section-view hidden"><div class="section-actions"><strong>Fila operacional</strong><button id="refreshOrdersBtn" class="ghost">Atualizar pedidos</button></div><div id="ordersWrap" class="cards-grid"></div></section>
+        <section id="storesSection" class="section-view hidden"><div class="section-actions"><button id="newStoreBtn" class="primary">+ Novo estabelecimento</button></div><div id="storesGrid" class="cards-grid"></div></section>
+        <section id="productsSection" class="section-view hidden"><div class="section-actions"><select id="storeFilter"><option value="">Todas as lojas</option></select><button id="newProductBtn" class="primary">+ Novo produto</button></div><div id="productsTableWrap" class="panel table-wrap"></div></section>
       </main>
     </section>
   </div>
-
-  <dialog id="storeDialog"><form method="dialog" id="storeForm" class="modal-form">
-    <div class="modal-head"><div><p class="eyebrow">ESTABELECIMENTO</p><h3 id="storeDialogTitle">Novo estabelecimento</h3></div><button type="button" class="icon-btn" data-close="storeDialog">×</button></div>
-    <input type="hidden" id="storeId" />
-    <div class="form-grid">
-      <label>Nome<input id="storeName" required /></label><label>Slug<input id="storeSlug" required /></label>
-      <label class="span-2">Descrição<textarea id="storeDescription" rows="3"></textarea></label>
-      <label>Taxa de entrega<input id="storeFee" type="number" step="0.01" min="0" value="0" /></label><label>Pedido mínimo<input id="storeMin" type="number" step="0.01" min="0" value="0" /></label>
-      <label>Tempo estimado (min)<input id="storeMinutes" type="number" min="1" value="40" /></label><label>Telefone<input id="storePhone" /></label>
-      <label class="span-2">Endereço<input id="storeAddress" /></label><label class="switch-row"><input id="storeOpen" type="checkbox" checked /> Loja aberta</label><label class="switch-row"><input id="storeActive" type="checkbox" checked /> Ativa no app</label>
-    </div>
-    <div class="modal-actions"><button type="button" class="ghost" data-close="storeDialog">Cancelar</button><button class="primary" type="submit">Salvar</button></div><p id="storeFormError" class="error"></p>
-  </form></dialog>
-
-  <dialog id="productDialog"><form method="dialog" id="productForm" class="modal-form">
-    <div class="modal-head"><div><p class="eyebrow">PRODUTO</p><h3 id="productDialogTitle">Novo produto</h3></div><button type="button" class="icon-btn" data-close="productDialog">×</button></div>
-    <input type="hidden" id="productId" />
-    <div class="form-grid">
-      <label class="span-2">Estabelecimento<select id="productStore" required></select></label><label>Nome<input id="productName" required /></label><label>Preço<input id="productPrice" type="number" step="0.01" min="0" required /></label>
-      <label class="span-2">Descrição<textarea id="productDescription" rows="3"></textarea></label><label>Categoria<input id="productCategory" /></label><label>Ordem<input id="productOrder" type="number" min="0" value="0" /></label><label class="switch-row"><input id="productAvailable" type="checkbox" checked /> Disponível</label>
-    </div>
-    <div class="modal-actions"><button type="button" class="ghost" data-close="productDialog">Cancelar</button><button class="primary" type="submit">Salvar</button></div><p id="productFormError" class="error"></p>
-  </form></dialog>
-
+  <dialog id="storeDialog"><form method="dialog" id="storeForm" class="modal-form"><div class="modal-head"><div><p class="eyebrow">ESTABELECIMENTO</p><h3 id="storeDialogTitle">Novo estabelecimento</h3></div><button type="button" class="icon-btn" data-close="storeDialog">×</button></div><input type="hidden" id="storeId" /><div class="form-grid"><label>Nome<input id="storeName" required /></label><label>Slug<input id="storeSlug" required /></label><label class="span-2">Descrição<textarea id="storeDescription" rows="3"></textarea></label><label>Taxa de entrega<input id="storeFee" type="number" step="0.01" min="0" value="0" /></label><label>Pedido mínimo<input id="storeMin" type="number" step="0.01" min="0" value="0" /></label><label>Tempo estimado (min)<input id="storeMinutes" type="number" min="1" value="40" /></label><label>Telefone<input id="storePhone" /></label><label class="span-2">Endereço<input id="storeAddress" /></label><label class="switch-row"><input id="storeOpen" type="checkbox" checked /> Loja aberta</label><label class="switch-row"><input id="storeActive" type="checkbox" checked /> Ativa no app</label></div><div class="modal-actions"><button type="button" class="ghost" data-close="storeDialog">Cancelar</button><button class="primary" type="submit">Salvar</button></div><p id="storeFormError" class="error"></p></form></dialog>
+  <dialog id="productDialog"><form method="dialog" id="productForm" class="modal-form"><div class="modal-head"><div><p class="eyebrow">PRODUTO</p><h3 id="productDialogTitle">Novo produto</h3></div><button type="button" class="icon-btn" data-close="productDialog">×</button></div><input type="hidden" id="productId" /><div class="form-grid"><label class="span-2">Estabelecimento<select id="productStore" required></select></label><label>Nome<input id="productName" required /></label><label>Preço<input id="productPrice" type="number" step="0.01" min="0" required /></label><label class="span-2">Descrição<textarea id="productDescription" rows="3"></textarea></label><label>Categoria<input id="productCategory" /></label><label>Ordem<input id="productOrder" type="number" min="0" value="0" /></label><label class="switch-row"><input id="productAvailable" type="checkbox" checked /> Disponível</label></div><div class="modal-actions"><button type="button" class="ghost" data-close="productDialog">Cancelar</button><button class="primary" type="submit">Salvar</button></div><p id="productFormError" class="error"></p></form></dialog>
   <div id="toast" class="toast hidden"></div>
-  <script src="app.js"></script><script src="signup.js"></script>
-</body>
-</html>
+  <script src="app.js"></script><script src="signup.js"></script><script src="partners.js"></script>
+</body></html>
