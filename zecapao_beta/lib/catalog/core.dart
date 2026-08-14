@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 const red=Color(0xFFE2231A),yellow=Color(0xFFFFC107),green=Color(0xFF1F5E3A),cream=Color(0xFFF2E6C9),bg=Color(0xFFF8F4EC);
 String money(num v)=>'R\$ ${v.toStringAsFixed(2).replaceAll('.',',')}';
 String valecoinMoney(int cents)=>money(cents/100);
-double cashbackRate(num v)=>v<=0?0:v<=50?.01:v<=150?.02:.03;
+double cashbackRate(num v)=>v<=0?0:v<=50?0.01:v<=150?0.02:0.03;
 int cashbackCoins(num v)=>(v*cashbackRate(v)*100).floor();
 Color hexColor(String v,Color f){try{var h=v.replaceAll('#','').trim();if(h.length==6)h='FF$h';return Color(int.parse(h,radix:16));}catch(_){return f;}}
 
