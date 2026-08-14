@@ -120,6 +120,35 @@ class ValeCoinBalance {
       );
 }
 
+class ValeCoinRedemptionPreview {
+  final int balanceCoins;
+  final int maxRedeemableCoins;
+  final int minimumRedeemCoins;
+
+  const ValeCoinRedemptionPreview({
+    required this.balanceCoins,
+    required this.maxRedeemableCoins,
+    required this.minimumRedeemCoins,
+  });
+
+  bool get canRedeem => maxRedeemableCoins >= minimumRedeemCoins;
+}
+
+class ValeCoinEntry {
+  final DateTime createdAt;
+  final String type;
+  final int amountCoins;
+  final String description;
+  final DateTime? expiresAt;
+
+  ValeCoinEntry.fromMap(Map<String, dynamic> m)
+      : createdAt = DateTime.tryParse('${m['created_at']}') ?? DateTime.now(),
+        type = '${m['entry_type'] ?? ''}',
+        amountCoins = m['amount_cents'] ?? 0,
+        description = '${m['description'] ?? ''}',
+        expiresAt = m['expires_at'] == null ? null : DateTime.tryParse('${m['expires_at']}');
+}
+
 class Repo {
   final client = Supabase.instance.client;
 
@@ -161,6 +190,29 @@ class Repo {
     );
   }
 
+  Future<ValeCoinRedemptionPreview> valecoinRedemptionPreview(String phone, double subtotal) async {
+    final d = await client.rpc('preview_valecoin_redemption', params: {
+      'p_phone': phone,
+      'p_subtotal': subtotal,
+    });
+    final rows = d as List;
+    if (rows.isEmpty) {
+      return const ValeCoinRedemptionPreview(balanceCoins: 0, maxRedeemableCoins: 0, minimumRedeemCoins: 100);
+    }
+    final m = Map<String, dynamic>.from(rows.first);
+    return ValeCoinRedemptionPreview(
+      balanceCoins: m['balance_cents'] ?? 0,
+      maxRedeemableCoins: m['max_redeemable_cents'] ?? 0,
+      minimumRedeemCoins: m['minimum_redeem_cents'] ?? 100,
+    );
+  }
+
+  Future<List<ValeCoinEntry>> valecoinStatement(String phone) async {
+    if (phone.trim().isEmpty) return [];
+    final d = await client.rpc('get_valecoin_statement', params: {'p_phone': phone, 'p_limit': 50});
+    return (d as List).map((e) => ValeCoinEntry.fromMap(Map<String, dynamic>.from(e))).toList();
+  }
+
   Future<String> createOrder({
     required Store store,
     required String name,
@@ -169,8 +221,9 @@ class Repo {
     required String payment,
     required String notes,
     required List<CartLine> items,
+    int redeemCoins = 0,
   }) async {
-    final r = await client.rpc('create_guest_order', params: {
+    final r = await client.rpc('create_guest_order_v2', params: {
       'p_store_id': store.id,
       'p_customer_name': name,
       'p_customer_phone': phone,
@@ -184,6 +237,7 @@ class Repo {
                 'option_ids': e.options.map((o) => o.id).toList(),
               })
           .toList(),
+      'p_valecoin_redeem_cents': redeemCoins,
     });
     return r.toString();
   }
