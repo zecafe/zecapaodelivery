@@ -2,8 +2,117 @@ import 'package:flutter/material.dart';
 import 'core.dart';
 import 'store.dart';
 
-class SignupPage extends StatefulWidget{const SignupPage({super.key});@override State<SignupPage>createState()=>_SignupPageState();}
-class _SignupPageState extends State<SignupPage>{final name=TextEditingController(),phone=TextEditingController();bool terms=false;@override void dispose(){name.dispose();phone.dispose();super.dispose();}@override Widget build(BuildContext c)=>Scaffold(body:SafeArea(child:ListView(padding:const EdgeInsets.all(24),children:[const SizedBox(height:28),Center(child:Image.asset('Ativos/Marca/zecapao_app_icon.png',height:108)),const SizedBox(height:24),const Text('Chegue mais. 🌵',style:TextStyle(fontSize:34,fontWeight:FontWeight.w900)),const SizedBox(height:8),const Text('Comida, café e experiências do Vale na palma da mão.',style:TextStyle(color:Colors.black54,fontSize:15)),const SizedBox(height:24),TextField(controller:name,decoration:const InputDecoration(labelText:'Seu nome',prefixIcon:Icon(Icons.person_outline))),const SizedBox(height:12),TextField(controller:phone,keyboardType:TextInputType.phone,decoration:const InputDecoration(labelText:'WhatsApp',prefixIcon:Icon(Icons.phone_outlined))),CheckboxListTile(contentPadding:EdgeInsets.zero,value:terms,onChanged:(v)=>setState(()=>terms=v??false),title:const Text('Aceito os termos e a política de privacidade',style:TextStyle(fontSize:13))),FilledButton(onPressed:terms?()=>Navigator.pushReplacement(c,MaterialPageRoute(builder:(_)=>HomePage(customerName:name.text.trim().isEmpty?'Cliente':name.text.trim(),phone:phone.text.trim()))):null,style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(54)),child:const Text('ENTRAR NO ZÉ CAPÃO',style:TextStyle(fontWeight:FontWeight.w900))),const SizedBox(height:12),const Center(child:Text('Catálogo 1.0 • conectado ao Vale',style:TextStyle(color:Colors.black38)))]))));}
+class SignupPage extends StatefulWidget {
+  const SignupPage({super.key});
+  @override
+  State<SignupPage> createState() => _SignupPageState();
+}
 
-class HomePage extends StatefulWidget{final String customerName,phone;const HomePage({super.key,required this.customerName,required this.phone});@override State<HomePage>createState()=>_HomePageState();}
-class _HomePageState extends State<HomePage>{final repo=Repo();late Future<List<Store>> future;@override void initState(){super.initState();future=repo.stores();}Future<void>reload()async{final n=repo.stores();setState(()=>future=n);await n;}@override Widget build(BuildContext c)=>Scaffold(body:SafeArea(child:RefreshIndicator(onRefresh:reload,child:ListView(padding:const EdgeInsets.all(16),children:[Row(children:[Image.asset('Ativos/Marca/zecapao_app_icon.png',width:52,height:52),const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Salve, ${widget.customerName}!',style:const TextStyle(color:Colors.black54)),const Text('Vale do Capão • BA',style:TextStyle(fontWeight:FontWeight.w900,fontSize:17))])),const Icon(Icons.location_on,color:red)]),const SizedBox(height:16),Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:green,borderRadius:BorderRadius.circular(26)),child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('O Vale chegou.',style:TextStyle(color:Colors.white,fontSize:30,fontWeight:FontWeight.w900)),SizedBox(height:5),Text('Escolha. Peça. Acompanhe em tempo real.',style:TextStyle(color:Colors.white70))])),const SizedBox(height:22),const Text('Perto de você',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900)),const SizedBox(height:10),FutureBuilder<List<Store>>(future:future,builder:(_,s){if(s.connectionState==ConnectionState.waiting)return const Padding(padding:EdgeInsets.all(40),child:Center(child:CircularProgressIndicator()));if(s.hasError)return Text('Erro: ${s.error}');return Column(children:(s.data??[]).map((x)=>Container(margin:const EdgeInsets.only(bottom:12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22)),child:ListTile(contentPadding:const EdgeInsets.all(14),leading:Container(width:64,height:64,padding:const EdgeInsets.all(6),decoration:BoxDecoration(color:bg,borderRadius:BorderRadius.circular(16)),child:Image.asset(x.logo,fit:BoxFit.contain)),title:Row(children:[Expanded(child:Text(x.name,style:const TextStyle(fontWeight:FontWeight.w900,fontSize:17))),Text(x.isOpen?'ABERTO':'FECHADO',style:TextStyle(fontSize:9,fontWeight:FontWeight.w900,color:x.isOpen?green:red))]),subtitle:Padding(padding:const EdgeInsets.only(top:6),child:Text('${x.description}\n${x.estimatedMinutes} min • Entrega ${money(x.deliveryFee)}')),isThreeLine:true,trailing:const Icon(Icons.arrow_forward_ios,size:16),onTap:x.isOpen?()=>Navigator.push(c,MaterialPageRoute(builder:(_)=>StorePage(store:x,customerName:widget.customerName,phone:widget.phone,repo:repo))):null))).toList());})]))))));}
+class _SignupPageState extends State<SignupPage> {
+  final name = TextEditingController();
+  final phone = TextEditingController();
+  bool terms = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            Image.asset('Ativos/Marca/zecapao_app_icon.png', height: 110),
+            const SizedBox(height: 20),
+            const Text('Chegue mais. 🌵', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 16),
+            TextField(controller: name, decoration: const InputDecoration(labelText: 'Seu nome')),
+            const SizedBox(height: 12),
+            TextField(controller: phone, decoration: const InputDecoration(labelText: 'WhatsApp')),
+            CheckboxListTile(
+              value: terms,
+              onChanged: (v) => setState(() => terms = v ?? false),
+              title: const Text('Aceito os termos e a política de privacidade'),
+            ),
+            FilledButton(
+              onPressed: terms ? () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => HomePage(
+                      customerName: name.text.trim().isEmpty ? 'Cliente' : name.text.trim(),
+                      phone: phone.text.trim(),
+                    ),
+                  ),
+                );
+              } : null,
+              child: const Text('ENTRAR NO ZÉ CAPÃO'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class HomePage extends StatefulWidget {
+  final String customerName;
+  final String phone;
+  const HomePage({super.key, required this.customerName, required this.phone});
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final repo = Repo();
+  late Future<List<Store>> future;
+
+  @override
+  void initState() {
+    super.initState();
+    future = repo.stores();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Olá, ${widget.customerName}')),
+      body: FutureBuilder<List<Store>>(
+        future: future,
+        builder: (_, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snap.hasError) return Center(child: Text('Erro: ${snap.error}'));
+          final stores = snap.data ?? [];
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              const Text('Vale do Capão • BA', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 16),
+              ...stores.map((store) => Card(
+                child: ListTile(
+                  leading: Image.asset(store.logo, width: 56, height: 56, fit: BoxFit.contain),
+                  title: Text(store.name, style: const TextStyle(fontWeight: FontWeight.w900)),
+                  subtitle: Text('${store.estimatedMinutes} min • Entrega ${money(store.deliveryFee)}'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: store.isOpen ? () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => StorePage(
+                          store: store,
+                          customerName: widget.customerName,
+                          phone: widget.phone,
+                          repo: repo,
+                        ),
+                      ),
+                    );
+                  } : null,
+                ),
+              )),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
