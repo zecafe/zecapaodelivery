@@ -66,3 +66,11 @@
     if(window.sb && document.querySelector('.sidebar nav')){clearInterval(wait);ensureUi();}
   },100);
 })();
+
+(() => {
+  if (document.querySelector('script[data-commercial-module]')) return;
+  const script = document.createElement('script');
+  script.src = 'commercial.js';
+  script.dataset.commercialModule = '1';
+  document.body.appendChild(script);
+})();
