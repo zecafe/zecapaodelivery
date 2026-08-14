@@ -1,7 +1,7 @@
 name: zecapao_beta
 description: Ze Capao Delivery Foundation 1.0
 publish_to: 'none'
-version: 1.0.0+7
+version: 1.0.0+8
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   supabase_flutter: ^2.15.4
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
@@ -26,5 +27,5 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: Ativos/Marca/zecapao_app_icon.png
-  adaptive_icon_background: '#F2E6C9'
+  adaptive_icon_background: '#F4E8D3'
   adaptive_icon_foreground: Ativos/Marca/zecapao_app_icon.png
