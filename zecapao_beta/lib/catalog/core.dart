@@ -19,8 +19,18 @@ double cashbackRate(num eligible) {
 
 int cashbackCoins(num eligible) => (eligible * cashbackRate(eligible) * 100).floor();
 
+Color hexColor(String value, Color fallback) {
+  try {
+    var hex = value.replaceAll('#', '').trim();
+    if (hex.length == 6) hex = 'FF$hex';
+    return Color(int.parse(hex, radix: 16));
+  } catch (_) {
+    return fallback;
+  }
+}
+
 class Store {
-  final String id, name, slug, description;
+  final String id, name, slug, description, logoUrl, coverUrl;
   final double deliveryFee;
   final int estimatedMinutes;
   final bool isOpen;
@@ -30,11 +40,13 @@ class Store {
         name = m['name'] ?? '',
         slug = m['slug'] ?? '',
         description = m['description'] ?? '',
+        logoUrl = (m['logo_url'] ?? '').toString(),
+        coverUrl = (m['cover_url'] ?? '').toString(),
         deliveryFee = double.tryParse('${m['delivery_fee'] ?? 0}') ?? 0,
         estimatedMinutes = m['estimated_minutes'] ?? 40,
         isOpen = m['is_open'] ?? false;
 
-  String get logo => {
+  String get localLogo => {
         'zecafe': 'Ativos/Marca/zecafe.jpg',
         'cafe-duvalle': 'Ativos/Marca/cafe_duvalle.jpg',
         'frutos': 'Ativos/Marca/frutos.jpg',
@@ -58,6 +70,23 @@ class Product {
         badge = (m['badge'] ?? '').toString(),
         price = double.tryParse('${m['price'] ?? 0}') ?? 0,
         featured = m['featured'] ?? false;
+}
+
+class CampaignBanner {
+  final String id, title, subtitle, imageUrl, backgroundHex, textHex, ctaLabel, targetType, targetValue;
+  final int sortOrder;
+
+  CampaignBanner.fromMap(Map<String, dynamic> m)
+      : id = m['id'],
+        title = m['title'] ?? '',
+        subtitle = m['subtitle'] ?? '',
+        imageUrl = (m['image_url'] ?? '').toString(),
+        backgroundHex = (m['background_hex'] ?? '#E2231A').toString(),
+        textHex = (m['text_hex'] ?? '#FFFFFF').toString(),
+        ctaLabel = (m['cta_label'] ?? '').toString(),
+        targetType = (m['target_type'] ?? 'none').toString(),
+        targetValue = (m['target_value'] ?? '').toString(),
+        sortOrder = m['sort_order'] ?? 0;
 }
 
 class ProductOption {
@@ -92,7 +121,6 @@ class CartLine {
   int quantity;
 
   CartLine(this.product, {this.options = const [], this.quantity = 1});
-
   double get unitPrice => product.price + options.fold(0, (s, o) => s + o.priceDelta);
   double get total => unitPrice * quantity;
   String get key => '${product.id}:${options.map((e) => e.id).join(',')}';
@@ -100,53 +128,10 @@ class CartLine {
 }
 
 class ValeCoinBalance {
-  final int balanceCoins;
-  final int lifetimeEarnedCoins;
-  final int lifetimeSpentCoins;
+  final int balanceCoins, lifetimeEarnedCoins, lifetimeSpentCoins;
   final DateTime? expiresNextAt;
-
-  const ValeCoinBalance({
-    required this.balanceCoins,
-    required this.lifetimeEarnedCoins,
-    required this.lifetimeSpentCoins,
-    required this.expiresNextAt,
-  });
-
-  factory ValeCoinBalance.zero() => const ValeCoinBalance(
-        balanceCoins: 0,
-        lifetimeEarnedCoins: 0,
-        lifetimeSpentCoins: 0,
-        expiresNextAt: null,
-      );
-}
-
-class ValeCoinRedemptionPreview {
-  final int balanceCoins;
-  final int maxRedeemableCoins;
-  final int minimumRedeemCoins;
-
-  const ValeCoinRedemptionPreview({
-    required this.balanceCoins,
-    required this.maxRedeemableCoins,
-    required this.minimumRedeemCoins,
-  });
-
-  bool get canRedeem => maxRedeemableCoins >= minimumRedeemCoins;
-}
-
-class ValeCoinEntry {
-  final DateTime createdAt;
-  final String type;
-  final int amountCoins;
-  final String description;
-  final DateTime? expiresAt;
-
-  ValeCoinEntry.fromMap(Map<String, dynamic> m)
-      : createdAt = DateTime.tryParse('${m['created_at']}') ?? DateTime.now(),
-        type = '${m['entry_type'] ?? ''}',
-        amountCoins = m['amount_cents'] ?? 0,
-        description = '${m['description'] ?? ''}',
-        expiresAt = m['expires_at'] == null ? null : DateTime.tryParse('${m['expires_at']}');
+  const ValeCoinBalance({required this.balanceCoins, required this.lifetimeEarnedCoins, required this.lifetimeSpentCoins, required this.expiresNextAt});
+  factory ValeCoinBalance.zero() => const ValeCoinBalance(balanceCoins: 0, lifetimeEarnedCoins: 0, lifetimeSpentCoins: 0, expiresNextAt: null);
 }
 
 class Repo {
@@ -157,22 +142,18 @@ class Repo {
     return (d as List).map((e) => Store.fromMap(Map<String, dynamic>.from(e))).toList();
   }
 
+  Future<List<CampaignBanner>> banners() async {
+    final d = await client.from('campaign_banners').select().order('sort_order');
+    return (d as List).map((e) => CampaignBanner.fromMap(Map<String, dynamic>.from(e))).toList();
+  }
+
   Future<List<Product>> products(String storeId) async {
-    final d = await client
-        .from('products')
-        .select()
-        .eq('store_id', storeId)
-        .eq('is_available', true)
-        .order('sort_order');
+    final d = await client.from('products').select().eq('store_id', storeId).eq('is_available', true).order('sort_order');
     return (d as List).map((e) => Product.fromMap(Map<String, dynamic>.from(e))).toList();
   }
 
   Future<List<OptionGroup>> options(String productId) async {
-    final d = await client
-        .from('product_option_groups')
-        .select('id,name,min_select,max_select,is_required,sort_order,product_options(id,name,price_delta,is_available,sort_order)')
-        .eq('product_id', productId)
-        .order('sort_order');
+    final d = await client.from('product_option_groups').select('id,name,min_select,max_select,is_required,sort_order,product_options(id,name,price_delta,is_available,sort_order)').eq('product_id', productId).order('sort_order');
     return (d as List).map((e) => OptionGroup.fromMap(Map<String, dynamic>.from(e))).toList();
   }
 
@@ -190,55 +171,19 @@ class Repo {
     );
   }
 
-  Future<ValeCoinRedemptionPreview> valecoinRedemptionPreview(String phone, double subtotal) async {
-    final d = await client.rpc('preview_valecoin_redemption', params: {
-      'p_phone': phone,
-      'p_subtotal': subtotal,
-    });
-    final rows = d as List;
-    if (rows.isEmpty) {
-      return const ValeCoinRedemptionPreview(balanceCoins: 0, maxRedeemableCoins: 0, minimumRedeemCoins: 100);
-    }
-    final m = Map<String, dynamic>.from(rows.first);
-    return ValeCoinRedemptionPreview(
-      balanceCoins: m['balance_cents'] ?? 0,
-      maxRedeemableCoins: m['max_redeemable_cents'] ?? 0,
-      minimumRedeemCoins: m['minimum_redeem_cents'] ?? 100,
-    );
-  }
-
-  Future<List<ValeCoinEntry>> valecoinStatement(String phone) async {
-    if (phone.trim().isEmpty) return [];
-    final d = await client.rpc('get_valecoin_statement', params: {'p_phone': phone, 'p_limit': 50});
-    return (d as List).map((e) => ValeCoinEntry.fromMap(Map<String, dynamic>.from(e))).toList();
-  }
-
-  Future<String> createOrder({
-    required Store store,
-    required String name,
-    required String phone,
-    required String address,
-    required String payment,
-    required String notes,
-    required List<CartLine> items,
-    int redeemCoins = 0,
-  }) async {
-    final r = await client.rpc('create_guest_order_v2', params: {
+  Future<String> createOrder({required Store store, required String name, required String phone, required String address, required String payment, required String notes, required List<CartLine> items, int valecoinCoins = 0}) async {
+    final rpcName = valecoinCoins > 0 ? 'create_guest_order_with_valecoin' : 'create_guest_order';
+    final params = <String, dynamic>{
       'p_store_id': store.id,
       'p_customer_name': name,
       'p_customer_phone': phone,
       'p_delivery_address': address,
       'p_payment_method': payment,
       'p_notes': notes,
-      'p_items': items
-          .map((e) => {
-                'product_id': e.product.id,
-                'quantity': e.quantity,
-                'option_ids': e.options.map((o) => o.id).toList(),
-              })
-          .toList(),
-      'p_valecoin_redeem_cents': redeemCoins,
-    });
+      'p_items': items.map((e) => {'product_id': e.product.id, 'quantity': e.quantity, 'option_ids': e.options.map((o) => o.id).toList()}).toList(),
+    };
+    if (valecoinCoins > 0) params['p_valecoin_cents'] = valecoinCoins;
+    final r = await client.rpc(rpcName, params: params);
     return r.toString();
   }
 
