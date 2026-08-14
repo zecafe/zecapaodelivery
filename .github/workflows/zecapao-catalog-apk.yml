@@ -16,21 +16,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           flutter-version: '3.44.9'
           cache: true
+
+      - name: Restore Android project
+        working-directory: zecapao_beta
+        run: flutter create --platforms=android --project-name zecapao_beta .
+
       - name: Dependencies
         working-directory: zecapao_beta
         run: flutter pub get
+
       - name: Analyze catalog
         working-directory: zecapao_beta
         run: flutter analyze lib/main_catalog.dart lib/catalog --no-fatal-infos --no-fatal-warnings
+
       - name: Build APK
         working-directory: zecapao_beta
         run: flutter build apk --debug --target=lib/main_catalog.dart
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
