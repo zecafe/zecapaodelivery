@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'core.dart';
 import 'store.dart';
+import 'wallet.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -107,38 +108,39 @@ class _HomePageState extends State<HomePage> {
       future: walletFuture,
       builder: (_, snap) {
         final wallet = snap.data ?? ValeCoinBalance.zero();
-        return Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: green,
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: Row(
-            children: [
-              const CircleAvatar(
-                radius: 27,
-                backgroundColor: yellow,
-                child: Text('V', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: green)),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('VALECOIN', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w900)),
-                    Text(
-                      '${wallet.balanceCoins} VC',
-                      style: const TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900),
-                    ),
-                    Text(
-                      '${valecoinMoney(wallet.balanceCoins)} em benefícios',
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ],
+        return InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ValeCoinWalletPage(phone: widget.phone, repo: repo)),
+            );
+            if (mounted) setState(() => walletFuture = repo.valecoinBalance(widget.phone));
+          },
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(color: green, borderRadius: BorderRadius.circular(22)),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 27,
+                  backgroundColor: yellow,
+                  child: Text('V', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: green)),
                 ),
-              ),
-              const Icon(Icons.chevron_right, color: Colors.white70),
-            ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('VALECOIN', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w900)),
+                      Text('${wallet.balanceCoins} VC', style: const TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900)),
+                      Text('${valecoinMoney(wallet.balanceCoins)} em benefícios', style: const TextStyle(color: Colors.white70)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.white70),
+              ],
+            ),
           ),
         );
       },
@@ -168,10 +170,7 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 14),
                 walletCard(),
                 const SizedBox(height: 10),
-                const Text(
-                  '1% a 3% de volta nas compras elegíveis. Crédito após a entrega.',
-                  style: TextStyle(color: Colors.black54, fontSize: 12),
-                ),
+                const Text('1% a 3% de volta nas compras elegíveis. Toque na carteira para ver o extrato.', style: TextStyle(color: Colors.black54, fontSize: 12)),
                 const SizedBox(height: 22),
                 const Text('Estabelecimentos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 8),
@@ -196,9 +195,7 @@ class _HomePageState extends State<HomePage> {
                                   ),
                                 ),
                               );
-                              if (mounted) {
-                                setState(() => walletFuture = repo.valecoinBalance(widget.phone));
-                              }
+                              if (mounted) setState(() => walletFuture = repo.valecoinBalance(widget.phone));
                             }
                           : null,
                     ),
