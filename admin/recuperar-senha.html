@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recuperar senha • Zé Capão Admin</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <section class="screen center-screen">
+    <div class="login-card">
+      <div class="brand-badge">ZC</div>
+      <p class="eyebrow">RECUPERAÇÃO DE ACESSO</p>
+      <h1>Crie uma nova senha</h1>
+      <p class="muted">Use pelo menos 6 caracteres.</p>
+      <form id="resetForm" class="stack">
+        <label>Nova senha<input id="newPassword" type="password" required minlength="6" /></label>
+        <label>Confirmar senha<input id="confirmPassword" type="password" required minlength="6" /></label>
+        <button id="saveBtn" class="primary" type="submit">Salvar nova senha</button>
+        <p id="message" class="error"></p>
+      </form>
+    </div>
+  </section>
+  <script src="reset-password.js"></script>
+</body>
+</html>
