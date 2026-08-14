@@ -155,7 +155,7 @@ class _HomePageState extends State<HomePage> {
           future: storesFuture,
           builder: (_, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
-              return const ListView(children: [SizedBox(height: 260), Center(child: CircularProgressIndicator())]);
+              return ListView(children: const [SizedBox(height: 260), Center(child: CircularProgressIndicator())]);
             }
             if (snap.hasError) {
               return ListView(children: [Padding(padding: const EdgeInsets.all(24), child: Text('Erro: ${snap.error}'))]);
