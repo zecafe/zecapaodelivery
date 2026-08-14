@@ -27,11 +27,26 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final notes = TextEditingController();
   String payment = 'pix';
   bool sending = false;
+  bool useValeCoins = false;
+  late Future<ValeCoinRedemptionPreview> redemptionFuture;
+  ValeCoinRedemptionPreview? redemption;
 
   double get subtotal => widget.items.fold(0, (sum, item) => sum + item.total);
-  double get total => subtotal + widget.store.deliveryFee;
-  int get expectedCoins => cashbackCoins(subtotal);
-  int get expectedPercent => (cashbackRate(subtotal) * 100).round();
+  int get redeemCoins => useValeCoins ? (redemption?.maxRedeemableCoins ?? 0) : 0;
+  double get valecoinDiscount => redeemCoins / 100;
+  double get eligibleAfterRedemption => (subtotal - valecoinDiscount).clamp(0, double.infinity);
+  double get total => subtotal + widget.store.deliveryFee - valecoinDiscount;
+  int get expectedCoins => cashbackCoins(eligibleAfterRedemption);
+  int get expectedPercent => (cashbackRate(eligibleAfterRedemption) * 100).round();
+
+  @override
+  void initState() {
+    super.initState();
+    redemptionFuture = widget.repo.valecoinRedemptionPreview(widget.phone, subtotal);
+    redemptionFuture.then((value) {
+      if (mounted) setState(() => redemption = value);
+    });
+  }
 
   @override
   void dispose() {
@@ -50,7 +65,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     if (widget.phone.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Informe seu WhatsApp para receber ValeCoins e acompanhar o pedido.')),
+        const SnackBar(content: Text('Informe seu WhatsApp para usar ValeCoins e acompanhar o pedido.')),
       );
       return;
     }
@@ -65,6 +80,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         payment: payment,
         notes: notes.text.trim(),
         items: widget.items,
+        redeemCoins: redeemCoins,
       );
 
       if (!mounted) return;
@@ -75,6 +91,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             orderId: orderId,
             repo: widget.repo,
             expectedCoins: expectedCoins,
+            redeemedCoins: redeemCoins,
           ),
         ),
       );
@@ -87,6 +104,82 @@ class _CheckoutPageState extends State<CheckoutPage> {
     } finally {
       if (mounted) setState(() => sending = false);
     }
+  }
+
+  Widget valeCoinBox() {
+    return FutureBuilder<ValeCoinRedemptionPreview>(
+      future: redemptionFuture,
+      builder: (_, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Row(children: [SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)), SizedBox(width: 12), Text('Consultando ValeCoins...')]),
+            ),
+          );
+        }
+        final p = snap.data ?? const ValeCoinRedemptionPreview(balanceCoins: 0, maxRedeemableCoins: 0, minimumRedeemCoins: 100);
+        if (!p.canRedeem) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(18)),
+            child: Row(
+              children: [
+                const CircleAvatar(backgroundColor: yellow, child: Text('V', style: TextStyle(fontWeight: FontWeight.w900, color: green))),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    p.balanceCoins > 0
+                        ? 'Você tem ${p.balanceCoins} VC. O uso começa a partir de ${p.minimumRedeemCoins} VC.'
+                        : 'Você ainda não tem ValeCoins disponíveis para usar.',
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(18)),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const CircleAvatar(backgroundColor: yellow, child: Text('V', style: TextStyle(fontWeight: FontWeight.w900, color: green))),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('USAR VALECOINS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: green)),
+                        Text('Saldo ${p.balanceCoins} VC • pode usar até ${p.maxRedeemableCoins} VC'),
+                      ],
+                    ),
+                  ),
+                  Switch(value: useValeCoins, onChanged: (value) => setState(() => useValeCoins = value)),
+                ],
+              ),
+              if (useValeCoins) ...[
+                const Divider(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Desconto ValeCoin', style: TextStyle(fontWeight: FontWeight.w800)),
+                    Text('- ${valecoinMoney(p.maxRedeemableCoins)}', style: const TextStyle(fontWeight: FontWeight.w900, color: green)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Limite de 30% do subtotal. Créditos com vencimento mais próximo são usados primeiro.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -108,7 +201,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
             ),
           ),
           const SizedBox(height: 10),
+          valeCoinBox(),
+          const SizedBox(height: 10),
           ListTile(title: const Text('Subtotal'), trailing: Text(money(subtotal))),
+          if (redeemCoins > 0)
+            ListTile(title: const Text('ValeCoin'), trailing: Text('- ${valecoinMoney(redeemCoins)}', style: const TextStyle(color: green, fontWeight: FontWeight.w900))),
           ListTile(title: const Text('Entrega'), trailing: Text(money(widget.store.deliveryFee))),
           ListTile(
             title: const Text('Total', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
@@ -120,20 +217,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
             decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(18)),
             child: Row(
               children: [
-                const CircleAvatar(
-                  backgroundColor: yellow,
-                  child: Text('V', style: TextStyle(fontWeight: FontWeight.w900, color: green)),
-                ),
+                const CircleAvatar(backgroundColor: yellow, child: Text('V', style: TextStyle(fontWeight: FontWeight.w900, color: green))),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Você ganha $expectedCoins ValeCoins', style: const TextStyle(fontWeight: FontWeight.w900)),
-                      Text(
-                        '$expectedPercent% de volta • ${valecoinMoney(expectedCoins)} após a entrega',
-                        style: const TextStyle(fontSize: 12, color: Colors.black54),
-                      ),
+                      Text('$expectedPercent% de volta • ${valecoinMoney(expectedCoins)} após a entrega', style: const TextStyle(fontSize: 12, color: Colors.black54)),
                     ],
                   ),
                 ),
@@ -143,10 +234,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           const SizedBox(height: 20),
           TextField(
             controller: address,
-            decoration: const InputDecoration(
-              labelText: 'Endereço / pousada / referência',
-              prefixIcon: Icon(Icons.location_on_outlined),
-            ),
+            decoration: const InputDecoration(labelText: 'Endereço / pousada / referência', prefixIcon: Icon(Icons.location_on_outlined)),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
@@ -160,11 +248,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             onChanged: (value) => setState(() => payment = value ?? 'pix'),
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: notes,
-            maxLines: 3,
-            decoration: const InputDecoration(labelText: 'Observações'),
-          ),
+          TextField(controller: notes, maxLines: 3, decoration: const InputDecoration(labelText: 'Observações')),
           const SizedBox(height: 20),
           FilledButton(
             onPressed: sending ? null : sendOrder,
@@ -175,7 +259,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           ),
           const SizedBox(height: 10),
           const Text(
-            'ValeCoins são calculados sobre os produtos elegíveis, após descontos, e não sobre a taxa de entrega.',
+            'ValeCoins não são sacáveis nem transferíveis. Cashback é calculado sobre produtos elegíveis após descontos e não inclui entrega.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 11, color: Colors.black45),
           ),
@@ -189,12 +273,14 @@ class OrderTrackingPage extends StatefulWidget {
   final String orderId;
   final Repo repo;
   final int expectedCoins;
+  final int redeemedCoins;
 
   const OrderTrackingPage({
     super.key,
     required this.orderId,
     required this.repo,
     required this.expectedCoins,
+    required this.redeemedCoins,
   });
 
   @override
@@ -268,12 +354,12 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                 const SizedBox(height: 8),
                 if (loading) const CircularProgressIndicator(),
                 if (!loading)
-                  Text(
-                    statusLabel(status),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w900),
-                  ),
+                  Text(statusLabel(status), textAlign: TextAlign.center, style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 18),
+                if (widget.redeemedCoins > 0) ...[
+                  Text('${widget.redeemedCoins} VC usados neste pedido', style: const TextStyle(fontWeight: FontWeight.w800, color: green)),
+                  const SizedBox(height: 10),
+                ],
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
@@ -285,15 +371,9 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                       if (status == 'cancelled')
                         const Text('Pedido cancelado não gera ValeCoins.', textAlign: TextAlign.center)
                       else if (delivered)
-                        Text(
-                          '+$creditedCoins VC creditados!',
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: green),
-                        )
+                        Text('+$creditedCoins VC creditados!', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: green))
                       else
-                        Text(
-                          '+${widget.expectedCoins} VC após a entrega',
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: green),
-                        ),
+                        Text('+${widget.expectedCoins} VC após a entrega', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: green)),
                     ],
                   ),
                 ),
