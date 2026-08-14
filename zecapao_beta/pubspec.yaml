@@ -1,16 +1,18 @@
 name: zecapao_beta
 description: Ze Capao Delivery Foundation 1.0
 publish_to: 'none'
-version: 1.0.0+8
+version: 1.0.0+9
 
 environment:
-  sdk: '>=3.5.0 <4.0.0'
+  sdk: '>=3.10.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
   supabase_flutter: ^2.15.4
   google_fonts: ^6.2.1
+  google_maps_flutter: ^2.18.0
+  geolocator: ^14.0.3
 
 dev_dependencies:
   flutter_test:
