@@ -1,0 +1,39 @@
+name: Zecapao Catalog APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'zecapao_beta/lib/catalog/**'
+      - 'zecapao_beta/lib/main_catalog.dart'
+      - 'zecapao_beta/pubspec.yaml'
+      - '.github/workflows/zecapao-catalog-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.44.9'
+          cache: true
+      - name: Dependencies
+        working-directory: zecapao_beta
+        run: flutter pub get
+      - name: Analyze catalog
+        working-directory: zecapao_beta
+        run: flutter analyze lib/main_catalog.dart lib/catalog --no-fatal-infos --no-fatal-warnings
+      - name: Build APK
+        working-directory: zecapao_beta
+        run: flutter build apk --debug --target=lib/main_catalog.dart
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: zecapao-catalog-1.0-apk
+          path: zecapao_beta/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14
