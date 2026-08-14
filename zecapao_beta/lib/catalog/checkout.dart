@@ -1,9 +1,34 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'core.dart';
 
-class CheckoutPage extends StatefulWidget{final Store store;final String customerName,phone;final Repo repo;final List<CartLine>items;const CheckoutPage({super.key,required this.store,required this.customerName,required this.phone,required this.repo,required this.items});@override State<CheckoutPage>createState()=>_CheckoutPageState();}
-class _CheckoutPageState extends State<CheckoutPage>{final address=TextEditingController(),notes=TextEditingController();String payment='pix';bool sending=false;double get subtotal=>widget.items.fold(0,(s,e)=>s+e.total);double get total=>subtotal+widget.store.deliveryFee;@override void dispose(){address.dispose();notes.dispose();super.dispose();}Future<void>send()async{if(address.text.trim().isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Informe o endereço ou referência.')));return;}setState(()=>sending=true);try{final id=await widget.repo.createOrder(store:widget.store,name:widget.customerName,phone:widget.phone,address:address.text.trim(),payment:payment,notes:notes.text.trim(),items:widget.items);if(!mounted)return;Navigator.pushReplacement(context,MaterialPageRoute(builder:(_)=>OrderSuccessPage(orderId:id,repo:widget.repo)));}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Não foi possível enviar: $e')));}finally{if(mounted)setState(()=>sending=false);}}@override Widget build(BuildContext c)=>Scaffold(appBar:AppBar(title:const Text('Finalizar pedido',style:TextStyle(fontWeight:FontWeight.w900))),body:ListView(padding:const EdgeInsets.all(18),children:[...widget.items.map((e)=>Container(margin:const EdgeInsets.only(bottom:8),padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16)),child:Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('${e.quantity}× ${e.product.name}',style:const TextStyle(fontWeight:FontWeight.w900)),if(e.optionText.isNotEmpty)Text(e.optionText,style:const TextStyle(color:Colors.black54,fontSize:12))])),Text(money(e.total),style:const TextStyle(fontWeight:FontWeight.w900))]))),const Divider(),ListTile(title:const Text('Subtotal'),trailing:Text(money(subtotal))),ListTile(title:const Text('Entrega'),trailing:Text(money(widget.store.deliveryFee))),ListTile(title:const Text('Total',style:TextStyle(fontWeight:FontWeight.w900,fontSize:18)),trailing:Text(money(total),style:const TextStyle(fontWeight:FontWeight.w900,fontSize:18,color:green))),const SizedBox(height:12),TextField(controller:address,decoration:const InputDecoration(labelText:'Endereço / pousada / referência',prefixIcon:Icon(Icons.location_on_outlined))),const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:payment,decoration:const InputDecoration(labelText:'Pagamento',prefixIcon:Icon(Icons.payments_outlined)),items:const[DropdownMenuItem(value:'pix',child:Text('Pix')),DropdownMenuItem(value:'card',child:Text('Cartão na entrega')),DropdownMenuItem(value:'cash',child:Text('Dinheiro'))],onChanged:(v)=>setState(()=>payment=v??'pix')),const SizedBox(height:12),TextField(controller:notes,maxLines:3,decoration:const InputDecoration(labelText:'Observações')),const SizedBox(height:18),FilledButton(onPressed:sending?null:send,style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(56),backgroundColor:green),child:sending?const SizedBox(width:24,height:24,child:CircularProgressIndicator(strokeWidth:2)):const Text('ENVIAR PEDIDO',style:TextStyle(fontWeight:FontWeight.w900)))]));}
+class CheckoutPage extends StatelessWidget {
+  final Store store;
+  final String customerName;
+  final String phone;
+  final Repo repo;
+  final List<CartLine> items;
 
-class OrderSuccessPage extends StatefulWidget{final String orderId;final Repo repo;const OrderSuccessPage({super.key,required this.orderId,required this.repo});@override State<OrderSuccessPage>createState()=>_OrderSuccessPageState();}
-class _OrderSuccessPageState extends State<OrderSuccessPage>{Map<String,dynamic>?order;Timer?timer;bool loading=true;@override void initState(){super.initState();refresh();timer=Timer.periodic(const Duration(seconds:4),(_)=>refresh(silent:true));}@override void dispose(){timer?.cancel();super.dispose();}Future<void>refresh({bool silent=false})async{try{final n=await widget.repo.orderStatus(widget.orderId);if(!mounted)return;if(n!=null)setState((){order=n;loading=false;});}catch(_){if(!silent&&mounted)setState(()=>loading=false);}}String label(String s)=>const{'pending':'Aguardando confirmação','accepted':'Aceito','preparing':'Em preparo','ready':'Pronto','out_for_delivery':'Saiu para entrega','delivered':'Entregue','cancelled':'Cancelado'}[s]??s;IconData icon(String s)=>const{'pending':Icons.schedule,'accepted':Icons.thumb_up_alt_outlined,'preparing':Icons.restaurant,'ready':Icons.check_circle_outline,'out_for_delivery':Icons.delivery_dining,'delivered':Icons.home_filled,'cancelled':Icons.cancel_outlined}[s]??Icons.receipt_long;@override Widget build(BuildContext c){final st='${order?['status']??'pending'}';return Scaffold(body:SafeArea(child:Center(child:SingleChildScrollView(padding:const EdgeInsets.all(26),child:Column(mainAxisSize:MainAxisSize.min,children:[CircleAvatar(radius:44,backgroundColor:st=='cancelled'?red:green,child:Icon(icon(st),color:Colors.white,size:44)),const SizedBox(height:20),const Text('Pedido enviado!',style:TextStyle(fontSize:30,fontWeight:FontWeight.w900)),const SizedBox(height:8),Text('Pedido #${widget.orderId.substring(0,8).toUpperCase()}',style:const TextStyle(color:Colors.black54)),const SizedBox(height:18),if(loading)const CircularProgressIndicator(),if(!loading)Container(width:double.infinity,padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:cream,borderRadius:BorderRadius.circular(18)),child:Column(children:[const Text('STATUS ATUAL',style:TextStyle(fontSize:11,fontWeight:FontWeight.w900)),const SizedBox(height:7),Text(label(st),textAlign:TextAlign.center,style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:st=='cancelled'?red:green)),const SizedBox(height:7),if(order!=null)Text('Total ${money(double.tryParse('${order!['total']}')??0)}'),const SizedBox(height:10),const Text('Atualização automática',style:TextStyle(fontSize:12,color:Colors.black45))])),const SizedBox(height:20),OutlinedButton.icon(onPressed:refresh,icon:const Icon(Icons.refresh),label:const Text('ATUALIZAR AGORA')),const SizedBox(height:8),FilledButton(onPressed:()=>Navigator.popUntil(c,(r)=>r.isFirst),child:const Text('VOLTAR AO INÍCIO'))])))))));}}
+  const CheckoutPage({
+    super.key,
+    required this.store,
+    required this.customerName,
+    required this.phone,
+    required this.repo,
+    required this.items,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Finalizar pedido')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: items.map((line) => ListTile(
+          title: Text('${line.quantity}× ${line.product.name}'),
+          subtitle: line.optionText.isEmpty ? null : Text(line.optionText),
+          trailing: Text(money(line.total)),
+        )).toList(),
+      ),
+    );
+  }
+}
