@@ -55,6 +55,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-catalog-1.2-valecoin-apk
+          name: zecapao-catalog-1.3-commercial-apk
           path: zecapao_beta/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
