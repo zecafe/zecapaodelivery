@@ -10,6 +10,8 @@ on:
 jobs:
   build-foundation-apk:
     runs-on: ubuntu-latest
+    env:
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
 
     steps:
       - name: Checkout repository
@@ -46,14 +48,40 @@ jobs:
           rm -rf /tmp/zecapao_build
           flutter create /tmp/zecapao_build --platforms=android --org com.zecapao.delivery --project-name zecapao_beta
 
-      - name: Apply source and branding
+      - name: Apply complete MVP source and branding
         shell: bash
         run: |
           cp zecapao_beta/pubspec.yaml /tmp/zecapao_build/pubspec.yaml
-          cp zecapao_beta/lib/main.dart /tmp/zecapao_build/lib/main.dart
+          rm -rf /tmp/zecapao_build/lib
+          cp -R zecapao_beta/lib /tmp/zecapao_build/lib
           mkdir -p /tmp/zecapao_build/Ativos/Marca
           cp -R "${{ steps.branding.outputs.brand_dir }}/." /tmp/zecapao_build/Ativos/Marca/
           rm -rf /tmp/zecapao_build/test
+
+      - name: Configure Android Maps
+        working-directory: /tmp/zecapao_build
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          manifest = Path('android/app/src/main/AndroidManifest.xml')
+          text = manifest.read_text()
+          key = os.environ.get('GOOGLE_MAPS_API_KEY') or 'MISSING_MAPS_KEY'
+          marker = '<manifest xmlns:android="http://schemas.android.com/apk/res/android">'
+          if 'android.permission.ACCESS_FINE_LOCATION' not in text:
+              text = text.replace(marker, marker + '\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />', 1)
+          if 'com.google.android.geo.API_KEY' not in text:
+              app_icon = 'android:icon="@mipmap/ic_launcher">'
+              metadata = app_icon + f'\n        <meta-data android:name="com.google.android.geo.API_KEY" android:value="{key}" />'
+              text = text.replace(app_icon, metadata, 1)
+          manifest.write_text(text)
+
+          gradle = Path('android/app/build.gradle.kts')
+          g = gradle.read_text().replace('minSdk = flutter.minSdkVersion', 'minSdk = 24')
+          gradle.write_text(g)
+          PY
 
       - name: Install dependencies
         working-directory: /tmp/zecapao_build
@@ -63,18 +91,18 @@ jobs:
         working-directory: /tmp/zecapao_build
         run: dart run flutter_launcher_icons
 
-      - name: Analyze Dart source
+      - name: Analyze MVP source
         working-directory: /tmp/zecapao_build
-        run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
+        run: flutter analyze lib/main_catalog.dart lib/catalog --no-fatal-infos --no-fatal-warnings
 
-      - name: Build APK
+      - name: Build MVP APK
         working-directory: /tmp/zecapao_build
-        run: flutter build apk --debug
+        run: flutter build apk --debug --target=lib/main_catalog.dart
 
-      - name: Upload APK artifact
+      - name: Upload MVP APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-foundation-1.0-apk
+          name: zecapao-1.9.1-mvp-comercial-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
