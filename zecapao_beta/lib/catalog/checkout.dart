@@ -6,6 +6,8 @@ import 'core.dart';
 import 'location_picker.dart';
 import 'pix_service.dart';
 
+const _sandboxPixEmail = 'test_user_br@testuser.com';
+
 class CheckoutPage extends StatefulWidget {
   final Store store;
   final String customerName;
@@ -29,7 +31,6 @@ class CheckoutPage extends StatefulWidget {
 class _CheckoutPageState extends State<CheckoutPage> {
   final address = TextEditingController();
   final notes = TextEditingController();
-  final payerEmail = TextEditingController();
   String payment = 'pix';
   bool sending = false;
   bool useValeCoins = false;
@@ -58,7 +59,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
   void dispose() {
     address.dispose();
     notes.dispose();
-    payerEmail.dispose();
     super.dispose();
   }
 
@@ -70,22 +70,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
     if (point != null && mounted) setState(() => deliveryPoint = point);
   }
 
-  bool validEmail(String value) {
-    final v = value.trim();
-    return v.contains('@') && v.contains('.') && v.length > 5;
-  }
-
   Future<void> submit() async {
     if (address.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informe o endereço ou referência.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Informe o endereço ou referência.')),
+      );
       return;
     }
     if (deliveryPoint == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marque o ponto de entrega no mapa.')));
-      return;
-    }
-    if (payment == 'pix' && !validEmail(payerEmail.text)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informe um e-mail válido para gerar o Pix.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Marque o ponto de entrega no mapa.')),
+      );
       return;
     }
 
@@ -108,7 +103,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         final charge = await PixService().createCharge(
           orderId: orderId,
           amount: total,
-          payerEmail: payerEmail.text,
+          payerEmail: _sandboxPixEmail,
         );
         if (!mounted) return;
         Navigator.pushReplacement(
@@ -139,7 +134,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível concluir: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Não foi possível concluir: $e')),
+        );
       }
     } finally {
       if (mounted) setState(() => sending = false);
@@ -150,16 +147,34 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return FutureBuilder<ValeCoinRedemptionPreview>(
       future: redemptionFuture,
       builder: (_, snap) {
-        final p = snap.data ?? const ValeCoinRedemptionPreview(balanceCoins: 0, maxRedeemableCoins: 0, minimumRedeemCoins: 100);
+        final p = snap.data ?? const ValeCoinRedemptionPreview(
+          balanceCoins: 0,
+          maxRedeemableCoins: 0,
+          minimumRedeemCoins: 100,
+        );
         if (snap.connectionState == ConnectionState.waiting) {
-          return const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('Consultando ValeCoins...')));
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Consultando ValeCoins...'),
+            ),
+          );
         }
         return Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(18)),
+          decoration: BoxDecoration(
+            color: cream,
+            borderRadius: BorderRadius.circular(18),
+          ),
           child: Row(
             children: [
-              const CircleAvatar(backgroundColor: yellow, child: Text('V', style: TextStyle(fontWeight: FontWeight.w900, color: green))),
+              const CircleAvatar(
+                backgroundColor: yellow,
+                child: Text(
+                  'V',
+                  style: TextStyle(fontWeight: FontWeight.w900, color: green),
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -168,7 +183,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       : 'Saldo ${p.balanceCoins} VC',
                 ),
               ),
-              if (p.canRedeem) Switch(value: useValeCoins, onChanged: (v) => setState(() => useValeCoins = v)),
+              if (p.canRedeem)
+                Switch(
+                  value: useValeCoins,
+                  onChanged: (v) => setState(() => useValeCoins = v),
+                ),
             ],
           ),
         );
@@ -183,42 +202,110 @@ class _CheckoutPageState extends State<CheckoutPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('Seu pedido', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          const Text(
+            'Seu pedido',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: 8),
-          ...widget.items.map((line) => Card(
-                child: ListTile(
-                  title: Text('${line.quantity}× ${line.product.name}', style: const TextStyle(fontWeight: FontWeight.w800)),
-                  subtitle: line.optionText.isEmpty ? null : Text(line.optionText),
-                  trailing: Text(money(line.total), style: const TextStyle(fontWeight: FontWeight.w900)),
+          ...widget.items.map(
+            (line) => Card(
+              child: ListTile(
+                title: Text(
+                  '${line.quantity}× ${line.product.name}',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
-              )),
+                subtitle: line.optionText.isEmpty ? null : Text(line.optionText),
+                trailing: Text(
+                  money(line.total),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 10),
           valeCoinCard(),
           const SizedBox(height: 10),
           ListTile(title: const Text('Subtotal'), trailing: Text(money(subtotal))),
-          if (redeemCoins > 0) ListTile(title: const Text('ValeCoin'), trailing: Text('- ${valecoinMoney(redeemCoins)}', style: const TextStyle(color: green, fontWeight: FontWeight.w900))),
-          ListTile(title: const Text('Entrega'), trailing: Text(money(widget.store.deliveryFee))),
-          ListTile(title: const Text('Total', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)), trailing: Text(money(total), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: green))),
+          if (redeemCoins > 0)
+            ListTile(
+              title: const Text('ValeCoin'),
+              trailing: Text(
+                '- ${valecoinMoney(redeemCoins)}',
+                style: const TextStyle(color: green, fontWeight: FontWeight.w900),
+              ),
+            ),
+          ListTile(
+            title: const Text('Entrega'),
+            trailing: Text(money(widget.store.deliveryFee)),
+          ),
+          ListTile(
+            title: const Text(
+              'Total',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            ),
+            trailing: Text(
+              money(total),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: green,
+              ),
+            ),
+          ),
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(18)),
-            child: Text('Você ganha $expectedCoins VC • $expectedPercent% de volta após a entrega', style: const TextStyle(fontWeight: FontWeight.w800)),
+            decoration: BoxDecoration(
+              color: cream,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Text(
+              'Você ganha $expectedCoins VC • $expectedPercent% de volta após a entrega',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
           ),
           const SizedBox(height: 18),
-          const Text('Onde entregar?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const Text(
+            'Onde entregar?',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: 8),
-          TextField(controller: address, decoration: const InputDecoration(labelText: 'Endereço / pousada / referência', prefixIcon: Icon(Icons.location_on_outlined))),
+          TextField(
+            controller: address,
+            decoration: const InputDecoration(
+              labelText: 'Endereço / pousada / referência',
+              prefixIcon: Icon(Icons.location_on_outlined),
+            ),
+          ),
           const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: pickLocation,
-            icon: Icon(deliveryPoint == null ? Icons.map_outlined : Icons.check_circle_rounded),
-            label: Text(deliveryPoint == null ? 'MARCAR PONTO NO MAPA' : 'LOCAL MARCADO • ALTERAR'),
+            icon: Icon(
+              deliveryPoint == null
+                  ? Icons.map_outlined
+                  : Icons.check_circle_rounded,
+            ),
+            label: Text(
+              deliveryPoint == null
+                  ? 'MARCAR PONTO NO MAPA'
+                  : 'LOCAL MARCADO • ALTERAR',
+            ),
           ),
-          if (deliveryPoint != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(deliveryPoint!.label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: brandMuted))),
+          if (deliveryPoint != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                deliveryPoint!.label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11, color: brandMuted),
+              ),
+            ),
           const SizedBox(height: 14),
           DropdownButtonFormField<String>(
             initialValue: payment,
-            decoration: const InputDecoration(labelText: 'Pagamento', prefixIcon: Icon(Icons.payments_outlined)),
+            decoration: const InputDecoration(
+              labelText: 'Pagamento',
+              prefixIcon: Icon(Icons.payments_outlined),
+            ),
             items: const [
               DropdownMenuItem(value: 'pix', child: Text('Pix Mercado Pago')),
               DropdownMenuItem(value: 'card', child: Text('Cartão na entrega')),
@@ -227,18 +314,52 @@ class _CheckoutPageState extends State<CheckoutPage> {
             onChanged: (v) => setState(() => payment = v ?? 'pix'),
           ),
           if (payment == 'pix') ...[
-            const SizedBox(height: 12),
-            TextField(controller: payerEmail, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'E-mail para o Pix', prefixIcon: Icon(Icons.email_outlined))),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: brandRedSoft,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.science_outlined, color: brandRed, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Ambiente de teste Mercado Pago. O e-mail sandbox é preenchido automaticamente.',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
           const SizedBox(height: 12),
-          TextField(controller: notes, maxLines: 3, decoration: const InputDecoration(labelText: 'Observações para entrega')),
+          TextField(
+            controller: notes,
+            maxLines: 3,
+            decoration: const InputDecoration(labelText: 'Observações para entrega'),
+          ),
           const SizedBox(height: 20),
           FilledButton(
             onPressed: sending ? null : submit,
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56), backgroundColor: green),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(56),
+              backgroundColor: green,
+            ),
             child: sending
-                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(payment == 'pix' ? 'GERAR PIX E FINALIZAR' : 'ENVIAR PEDIDO', style: const TextStyle(fontWeight: FontWeight.w900)),
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    payment == 'pix'
+                        ? 'GERAR PIX E FINALIZAR'
+                        : 'ENVIAR PEDIDO',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
           ),
         ],
       ),
@@ -246,7 +367,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 }
 
-class PixPaymentPage extends StatelessWidget {
+class PixPaymentPage extends StatefulWidget {
   final String orderId;
   final PixCharge charge;
   final Repo repo;
@@ -264,39 +385,157 @@ class PixPaymentPage extends StatelessWidget {
     required this.amount,
   });
 
-  Uint8List? get qrBytes {
-    if (charge.qrCodeBase64.isEmpty) return null;
+  @override
+  State<PixPaymentPage> createState() => _PixPaymentPageState();
+}
+
+class _PixPaymentPageState extends State<PixPaymentPage> {
+  Timer? timer;
+  Map<String, dynamic>? order;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshOrder();
+    timer = Timer.periodic(const Duration(seconds: 4), (_) => _refreshOrder());
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refreshOrder() async {
     try {
-      final raw = charge.qrCodeBase64.contains(',') ? charge.qrCodeBase64.split(',').last : charge.qrCodeBase64;
+      final next = await widget.repo.orderStatus(widget.orderId);
+      if (!mounted) return;
+      setState(() => order = next);
+    } catch (_) {}
+  }
+
+  Uint8List? get qrBytes {
+    if (widget.charge.qrCodeBase64.isEmpty) return null;
+    try {
+      final raw = widget.charge.qrCodeBase64.contains(',')
+          ? widget.charge.qrCodeBase64.split(',').last
+          : widget.charge.qrCodeBase64;
       return base64Decode(raw);
     } catch (_) {
       return null;
     }
   }
 
+  String get mpStatus {
+    final value = widget.charge.status.trim();
+    return value.isEmpty ? 'action_required' : value;
+  }
+
+  String get statusLabel {
+    switch (mpStatus) {
+      case 'processed':
+      case 'approved':
+        return 'Pagamento confirmado';
+      case 'cancelled':
+      case 'rejected':
+        return 'Pagamento não aprovado';
+      case 'action_required':
+      case 'pending':
+      default:
+        return 'Aguardando transferência';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bytes = qrBytes;
+    final orderStatus = '${order?['status'] ?? 'pending'}';
     return Scaffold(
       appBar: AppBar(title: const Text('Pague com Pix')),
       body: ListView(
         padding: const EdgeInsets.all(22),
         children: [
           const Icon(Icons.pix_rounded, size: 56, color: green),
-          Text(money(amount), textAlign: TextAlign.center, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
-          const Text('Mercado Pago • validade de até 30 minutos', textAlign: TextAlign.center, style: TextStyle(color: brandMuted)),
+          const SizedBox(height: 8),
+          Text(
+            money(widget.amount),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: cream,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  statusLabel,
+                  style: const TextStyle(
+                    color: green,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Mercado Pago: $mpStatus',
+                  style: const TextStyle(fontSize: 11, color: brandMuted),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Sandbox Mercado Pago • validade de até 30 minutos',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: brandMuted, fontSize: 11),
+          ),
           const SizedBox(height: 20),
-          if (bytes != null) Center(child: Image.memory(bytes, width: 240, height: 240)),
-          if (charge.qrCode.isNotEmpty) ...[
+          if (bytes != null)
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Image.memory(bytes, width: 240, height: 240),
+              ),
+            ),
+          if (widget.charge.qrCode.isNotEmpty) ...[
             const SizedBox(height: 18),
-            const Text('Pix copia e cola', style: TextStyle(fontWeight: FontWeight.w900)),
+            const Text(
+              'Pix copia e cola',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
             const SizedBox(height: 8),
-            Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)), child: Text(charge.qrCode, maxLines: 4, overflow: TextOverflow.ellipsis)),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                widget.charge.qrCode,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11),
+              ),
+            ),
             const SizedBox(height: 10),
             FilledButton.icon(
               onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: charge.qrCode));
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Código Pix copiado.')));
+                await Clipboard.setData(
+                  ClipboardData(text: widget.charge.qrCode),
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Código Pix copiado.')),
+                  );
+                }
               },
               icon: const Icon(Icons.copy_rounded),
               label: const Text('COPIAR CÓDIGO PIX'),
@@ -304,12 +543,31 @@ class PixPaymentPage extends StatelessWidget {
           ],
           const SizedBox(height: 14),
           OutlinedButton.icon(
+            onPressed: _refreshOrder,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('ATUALIZAR PAGAMENTO'),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pedido no Zé Capão: $orderStatus',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 10, color: brandMuted),
+          ),
+          const SizedBox(height: 14),
+          FilledButton.icon(
             onPressed: () => Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => OrderTrackingPage(orderId: orderId, repo: repo, expectedCoins: expectedCoins, redeemedCoins: redeemedCoins)),
+              MaterialPageRoute(
+                builder: (_) => OrderTrackingPage(
+                  orderId: widget.orderId,
+                  repo: widget.repo,
+                  expectedCoins: widget.expectedCoins,
+                  redeemedCoins: widget.redeemedCoins,
+                ),
+              ),
             ),
-            icon: const Icon(Icons.check_circle_outline_rounded),
-            label: const Text('JÁ PAGUEI • ACOMPANHAR PEDIDO'),
+            icon: const Icon(Icons.receipt_long_outlined),
+            label: const Text('ACOMPANHAR PEDIDO'),
           ),
         ],
       ),
@@ -394,18 +652,36 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                 CircleAvatar(
                   radius: 42,
                   backgroundColor: status == 'cancelled' ? red : green,
-                  child: Icon(delivered ? Icons.check : Icons.delivery_dining, size: 42, color: Colors.white),
+                  child: Icon(
+                    delivered ? Icons.check : Icons.delivery_dining,
+                    size: 42,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 18),
-                Text('Pedido #${widget.orderId.substring(0, 8).toUpperCase()}', style: const TextStyle(color: Colors.black54)),
+                Text(
+                  'Pedido #${widget.orderId.substring(0, 8).toUpperCase()}',
+                  style: const TextStyle(color: Colors.black54),
+                ),
                 const SizedBox(height: 8),
                 if (loading) const CircularProgressIndicator(),
-                if (!loading) Text(statusLabel(status), textAlign: TextAlign.center, style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w900)),
+                if (!loading)
+                  Text(
+                    statusLabel(status),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 27,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 const SizedBox(height: 18),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(color: cream, borderRadius: BorderRadius.circular(20)),
+                  decoration: BoxDecoration(
+                    color: cream,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   child: Text(
                     status == 'cancelled'
                         ? 'Pedido cancelado não gera ValeCoins.'
@@ -413,13 +689,24 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                             ? '+$credited VC creditados!'
                             : '+${widget.expectedCoins} VC após a entrega',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: green),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: green,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
-                OutlinedButton.icon(onPressed: refresh, icon: const Icon(Icons.refresh), label: const Text('ATUALIZAR AGORA')),
+                OutlinedButton.icon(
+                  onPressed: refresh,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('ATUALIZAR AGORA'),
+                ),
                 const SizedBox(height: 8),
-                FilledButton(onPressed: () => Navigator.popUntil(context, (route) => route.isFirst), child: const Text('VOLTAR AO INÍCIO')),
+                FilledButton(
+                  onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
+                  child: const Text('VOLTAR AO INÍCIO'),
+                ),
               ],
             ),
           ),
