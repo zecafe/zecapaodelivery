@@ -102,7 +102,7 @@ jobs:
       - name: Upload MVP APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-1.9.1-mvp-comercial-apk
+          name: zecapao-1.9.2-mvp-comercial-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
