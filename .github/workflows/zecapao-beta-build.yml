@@ -30,6 +30,35 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Restore stable Android debug signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: zecapao-android-debug-keystore-v1
+
+      - name: Ensure stable debug signing key
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+            keytool -genkeypair \
+              -keystore "$HOME/.android/debug.keystore" \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Zecapao,C=BR"
+          fi
+          echo '=== ZECAPAO MAPS ANDROID ID ==='
+          echo 'com.zecapao.delivery'
+          echo '=== ZECAPAO DEBUG SHA1 ==='
+          keytool -list -v \
+            -keystore "$HOME/.android/debug.keystore" \
+            -storepass android \
+            -alias androiddebugkey | grep 'SHA1:'
+
       - name: Discover branding assets
         id: branding
         shell: bash
@@ -46,7 +75,7 @@ jobs:
       - name: Create clean Android project
         run: |
           rm -rf /tmp/zecapao_build
-          flutter create /tmp/zecapao_build --platforms=android --org com.zecapao.delivery --project-name zecapao_beta
+          flutter create /tmp/zecapao_build --platforms=android --org com.zecapao --project-name zecapao_delivery
 
       - name: Apply complete MVP source and branding
         shell: bash
@@ -58,13 +87,13 @@ jobs:
           cp -R "${{ steps.branding.outputs.brand_dir }}/." /tmp/zecapao_build/Ativos/Marca/
           rm -rf /tmp/zecapao_build/test
 
-      - name: Configure Android Maps
+      - name: Configure Android identity and Maps
         working-directory: /tmp/zecapao_build
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import os
+          import os, re
 
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           text = manifest.read_text()
@@ -75,13 +104,22 @@ jobs:
           if 'com.google.android.geo.API_KEY' not in text:
               app_icon = 'android:icon="@mipmap/ic_launcher">'
               metadata = app_icon + f'\n        <meta-data android:name="com.google.android.geo.API_KEY" android:value="{key}" />'
+              if app_icon not in text:
+                  raise SystemExit('Nao encontrei a tag application para inserir Maps API key.')
               text = text.replace(app_icon, metadata, 1)
           manifest.write_text(text)
 
           gradle = Path('android/app/build.gradle.kts')
-          g = gradle.read_text().replace('minSdk = flutter.minSdkVersion', 'minSdk = 24')
+          g = gradle.read_text()
+          g = g.replace('minSdk = flutter.minSdkVersion', 'minSdk = 24')
+          g = re.sub(r'namespace\s*=\s*"[^"]+"', 'namespace = "com.zecapao.delivery"', g)
+          g = re.sub(r'applicationId\s*=\s*"[^"]+"', 'applicationId = "com.zecapao.delivery"', g)
           gradle.write_text(g)
           PY
+
+          echo '=== ANDROID PACKAGE CHECK ==='
+          grep -E 'namespace|applicationId' android/app/build.gradle.kts
+          test "$GOOGLE_MAPS_API_KEY" != "" || { echo 'GOOGLE_MAPS_API_KEY ausente'; exit 1; }
 
       - name: Install dependencies
         working-directory: /tmp/zecapao_build
@@ -102,7 +140,7 @@ jobs:
       - name: Upload MVP APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-1.9.2-mvp-comercial-apk
+          name: zecapao-1.9.3-mvp-operacional-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
