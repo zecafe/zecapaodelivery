@@ -62,9 +62,15 @@ jobs:
       - name: Validate SAFE branding
         shell: bash
         run: |
-          test -f zecapao_beta/Ativos/Marca/zecapao_app_icon.png || { echo 'ERRO: icone oficial ausente'; exit 1; }
-          echo '=== SAFE OFFICIAL ICON ==='
-          ls -lh zecapao_beta/Ativos/Marca/zecapao_app_icon.png
+          test -f zecapao_beta/Ativos/Marca/zecapao_app_icon.png.png || { echo 'ERRO: novo PNG oficial ausente'; exit 1; }
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('zecapao_beta/Ativos/Marca/zecapao_app_icon.png.png')
+          sig=p.read_bytes()[:8]
+          if sig != b'\x89PNG\r\n\x1a\n':
+              raise SystemExit('ERRO: arquivo enviado nao possui assinatura PNG valida')
+          print('PNG oficial valido:', p, p.stat().st_size, 'bytes')
+          PY
 
       - name: Create clean Android project
         run: |
@@ -79,8 +85,10 @@ jobs:
           cp -R zecapao_beta/lib /tmp/zecapao_build/lib
           mkdir -p /tmp/zecapao_build/Ativos/Marca
           cp -R zecapao_beta/Ativos/Marca/. /tmp/zecapao_build/Ativos/Marca/
+          cp zecapao_beta/Ativos/Marca/zecapao_app_icon.png.png /tmp/zecapao_build/Ativos/Marca/zecapao_app_icon.png
           rm -rf /tmp/zecapao_build/test
-          test -f /tmp/zecapao_build/Ativos/Marca/zecapao_app_icon.png
+          echo '=== ICON USED BY BUILD ==='
+          file /tmp/zecapao_build/Ativos/Marca/zecapao_app_icon.png
 
       - name: Configure Android identity and Maps
         working-directory: /tmp/zecapao_build
