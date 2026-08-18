@@ -59,23 +59,19 @@ jobs:
             -storepass android \
             -alias androiddebugkey | grep 'SHA1:'
 
-      - name: Validate official branding
+      - name: Validate SAFE branding
         shell: bash
         run: |
-          test -f zecapao_beta/Ativos/Marca/zecapao_app_icon.png
-          test -f zecapao_beta/Ativos/Marca/zecapao_logo_horizontal.webp
-          test -f zecapao_beta/Ativos/Marca/zecapao_mascote.webp
-          test -f zecapao_beta/Ativos/Marca/zecapao_splash.webp
-          test -f zecapao_beta/Ativos/Marca/zecafe.jpg
-          echo '=== OFFICIAL BRANDING SOURCE ==='
-          ls -lh zecapao_beta/Ativos/Marca/zecapao_*
+          test -f zecapao_beta/Ativos/Marca/zecapao_app_icon.png || { echo 'ERRO: icone oficial ausente'; exit 1; }
+          echo '=== SAFE OFFICIAL ICON ==='
+          ls -lh zecapao_beta/Ativos/Marca/zecapao_app_icon.png
 
       - name: Create clean Android project
         run: |
           rm -rf /tmp/zecapao_build
           flutter create /tmp/zecapao_build --platforms=android --org com.zecapao --project-name zecapao_delivery
 
-      - name: Apply complete MVP source and official branding
+      - name: Apply complete MVP source and SAFE branding
         shell: bash
         run: |
           cp zecapao_beta/pubspec.yaml /tmp/zecapao_build/pubspec.yaml
@@ -84,8 +80,7 @@ jobs:
           mkdir -p /tmp/zecapao_build/Ativos/Marca
           cp -R zecapao_beta/Ativos/Marca/. /tmp/zecapao_build/Ativos/Marca/
           rm -rf /tmp/zecapao_build/test
-          echo '=== BRANDING COPIED TO BUILD ==='
-          ls -lh /tmp/zecapao_build/Ativos/Marca/zecapao_*
+          test -f /tmp/zecapao_build/Ativos/Marca/zecapao_app_icon.png
 
       - name: Configure Android identity and Maps
         working-directory: /tmp/zecapao_build
@@ -124,7 +119,7 @@ jobs:
         working-directory: /tmp/zecapao_build
         run: flutter pub get
 
-      - name: Generate official Android launcher icon
+      - name: Generate SAFE Android launcher icon
         working-directory: /tmp/zecapao_build
         run: dart run flutter_launcher_icons
 
@@ -139,7 +134,7 @@ jobs:
       - name: Upload MVP APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-1.9.4-branding-oficial-apk
+          name: zecapao-1.9.4-safe-icone-oficial-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
