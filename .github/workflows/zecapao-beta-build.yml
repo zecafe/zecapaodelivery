@@ -92,13 +92,42 @@ jobs:
         shell: bash
         run: |
           rm -rf /tmp/zecapao_branding
-          mkdir -p /tmp/zecapao_branding
-          base64 -d .github/assets/branding_official.zip.b64 > /tmp/zecapao_branding/branding.zip
-          unzip -q -o /tmp/zecapao_branding/branding.zip -d /tmp/zecapao_branding/files
-          cp /tmp/zecapao_branding/files/icon.png /tmp/zecapao_build/Ativos/Marca/zecapao_app_icon.png
-          cp /tmp/zecapao_branding/files/logo.webp /tmp/zecapao_build/Ativos/Marca/zecapao_logo_horizontal.webp
-          cp /tmp/zecapao_branding/files/mascote.webp /tmp/zecapao_build/Ativos/Marca/zecapao_mascote.webp
-          cp /tmp/zecapao_branding/files/splash.webp /tmp/zecapao_build/Ativos/Marca/zecapao_splash.webp
+          mkdir -p /tmp/zecapao_branding/files
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, io, zipfile, shutil
+
+          source = Path('.github/assets/branding_official.zip.b64')
+          raw = ''.join(source.read_text().split())
+          try:
+              payload = base64.b64decode(raw, validate=False)
+          except Exception as exc:
+              raise SystemExit(f'Falha ao decodificar branding base64: {exc}')
+
+          print(f'Branding ZIP reconstruido: {len(payload)} bytes')
+          try:
+              zf = zipfile.ZipFile(io.BytesIO(payload))
+              names = zf.namelist()
+              print('Arquivos no pacote:', names)
+              zf.extractall('/tmp/zecapao_branding/files')
+          except Exception as exc:
+              raise SystemExit(f'Falha ao abrir ZIP de branding: {exc}')
+
+          root = Path('/tmp/zecapao_branding/files')
+          target = Path('/tmp/zecapao_build/Ativos/Marca')
+          wanted = {
+              'icon.png': 'zecapao_app_icon.png',
+              'logo.webp': 'zecapao_logo_horizontal.webp',
+              'mascote.webp': 'zecapao_mascote.webp',
+              'splash.webp': 'zecapao_splash.webp',
+          }
+          for src_name, dst_name in wanted.items():
+              src = root / src_name
+              if not src.exists():
+                  raise SystemExit(f'Arquivo oficial ausente no pacote: {src_name}')
+              shutil.copy2(src, target / dst_name)
+              print(f'OK {src_name} -> {dst_name} ({src.stat().st_size} bytes)')
+          PY
           echo '=== OFFICIAL BRANDING INSTALLED ==='
           ls -lh /tmp/zecapao_build/Ativos/Marca/zecapao_*
 
