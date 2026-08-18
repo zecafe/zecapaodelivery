@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -33,52 +32,7 @@ class CatalogApp extends StatelessWidget{
         navigationBarTheme:NavigationBarThemeData(backgroundColor:Colors.white,indicatorColor:brandRedSoft,height:70,labelTextStyle:WidgetStatePropertyAll(GoogleFonts.poppins(fontSize:11,fontWeight:FontWeight.w700)),iconTheme:WidgetStateProperty.resolveWith((states)=>IconThemeData(color:states.contains(WidgetState.selected)?brandRed:brandInk.withValues(alpha:.62)))),
         chipTheme:ChipThemeData(backgroundColor:Colors.white,selectedColor:brandRed,secondarySelectedColor:brandRed,labelStyle:GoogleFonts.poppins(fontSize:12,fontWeight:FontWeight.w700),secondaryLabelStyle:GoogleFonts.poppins(fontSize:12,fontWeight:FontWeight.w700,color:Colors.white),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)),side:BorderSide.none),
       ),
-      home:const OfficialSplashGate(),
-    );
-  }
-}
-
-class OfficialSplashGate extends StatefulWidget{
-  const OfficialSplashGate({super.key});
-  @override
-  State<OfficialSplashGate> createState()=>_OfficialSplashGateState();
-}
-
-class _OfficialSplashGateState extends State<OfficialSplashGate>{
-  bool ready=false;
-  Timer? timer;
-
-  @override
-  void initState(){
-    super.initState();
-    timer=Timer(const Duration(milliseconds:1400),(){
-      if(mounted)setState(()=>ready=true);
-    });
-  }
-
-  @override
-  void dispose(){
-    timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context){
-    if(ready)return const CommerceSignupPage();
-    return Scaffold(
-      backgroundColor:brandRed,
-      body:SizedBox.expand(
-        child:Image.asset(
-          'Ativos/Marca/zecapao_splash.webp',
-          fit:BoxFit.cover,
-          alignment:Alignment.center,
-          errorBuilder:(_,__,___)=>Container(
-            color:brandRed,
-            alignment:Alignment.center,
-            child:Image.asset('Ativos/Marca/zecapao_app_icon.png',width:150,height:150),
-          ),
-        ),
-      ),
+      home:const CommerceSignupPage(),
     );
   }
 }
