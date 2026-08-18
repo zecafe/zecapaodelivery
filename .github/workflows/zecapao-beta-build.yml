@@ -5,7 +5,6 @@ on:
   push:
     paths:
       - 'zecapao_beta/**'
-      - '.github/assets/branding_official.zip.b64'
       - '.github/workflows/zecapao-beta-build.yml'
 
 jobs:
@@ -60,75 +59,32 @@ jobs:
             -storepass android \
             -alias androiddebugkey | grep 'SHA1:'
 
-      - name: Discover existing partner branding assets
-        id: branding
+      - name: Validate official branding
         shell: bash
         run: |
-          ICON_PATH="$(find zecapao_beta -type f -name 'zecapao_app_icon.png' | head -n 1)"
-          if [ -z "$ICON_PATH" ]; then
-            echo 'ERRO: zecapao_app_icon.png nao foi encontrado.'
-            exit 1
-          fi
-          BRAND_DIR="$(dirname "$ICON_PATH")"
-          test -f "$BRAND_DIR/zecafe.jpg" || { echo 'ERRO: zecafe.jpg ausente.'; exit 1; }
-          echo "brand_dir=$BRAND_DIR" >> "$GITHUB_OUTPUT"
+          test -f zecapao_beta/Ativos/Marca/zecapao_app_icon.png
+          test -f zecapao_beta/Ativos/Marca/zecapao_logo_horizontal.webp
+          test -f zecapao_beta/Ativos/Marca/zecapao_mascote.webp
+          test -f zecapao_beta/Ativos/Marca/zecapao_splash.webp
+          test -f zecapao_beta/Ativos/Marca/zecafe.jpg
+          echo '=== OFFICIAL BRANDING SOURCE ==='
+          ls -lh zecapao_beta/Ativos/Marca/zecapao_*
 
       - name: Create clean Android project
         run: |
           rm -rf /tmp/zecapao_build
           flutter create /tmp/zecapao_build --platforms=android --org com.zecapao --project-name zecapao_delivery
 
-      - name: Apply complete MVP source and existing partner branding
+      - name: Apply complete MVP source and official branding
         shell: bash
         run: |
           cp zecapao_beta/pubspec.yaml /tmp/zecapao_build/pubspec.yaml
           rm -rf /tmp/zecapao_build/lib
           cp -R zecapao_beta/lib /tmp/zecapao_build/lib
           mkdir -p /tmp/zecapao_build/Ativos/Marca
-          cp -R "${{ steps.branding.outputs.brand_dir }}/." /tmp/zecapao_build/Ativos/Marca/
+          cp -R zecapao_beta/Ativos/Marca/. /tmp/zecapao_build/Ativos/Marca/
           rm -rf /tmp/zecapao_build/test
-
-      - name: Install official Ze Capao branding
-        shell: bash
-        run: |
-          rm -rf /tmp/zecapao_branding
-          mkdir -p /tmp/zecapao_branding/files
-          python3 - <<'PY'
-          from pathlib import Path
-          import base64, io, zipfile, shutil
-
-          source = Path('.github/assets/branding_official.zip.b64')
-          raw = ''.join(source.read_text().split())
-          try:
-              payload = base64.b64decode(raw, validate=False)
-          except Exception as exc:
-              raise SystemExit(f'Falha ao decodificar branding base64: {exc}')
-
-          print(f'Branding ZIP reconstruido: {len(payload)} bytes')
-          try:
-              zf = zipfile.ZipFile(io.BytesIO(payload))
-              names = zf.namelist()
-              print('Arquivos no pacote:', names)
-              zf.extractall('/tmp/zecapao_branding/files')
-          except Exception as exc:
-              raise SystemExit(f'Falha ao abrir ZIP de branding: {exc}')
-
-          root = Path('/tmp/zecapao_branding/files')
-          target = Path('/tmp/zecapao_build/Ativos/Marca')
-          wanted = {
-              'icon.png': 'zecapao_app_icon.png',
-              'logo.webp': 'zecapao_logo_horizontal.webp',
-              'mascote.webp': 'zecapao_mascote.webp',
-              'splash.webp': 'zecapao_splash.webp',
-          }
-          for src_name, dst_name in wanted.items():
-              src = root / src_name
-              if not src.exists():
-                  raise SystemExit(f'Arquivo oficial ausente no pacote: {src_name}')
-              shutil.copy2(src, target / dst_name)
-              print(f'OK {src_name} -> {dst_name} ({src.stat().st_size} bytes)')
-          PY
-          echo '=== OFFICIAL BRANDING INSTALLED ==='
+          echo '=== BRANDING COPIED TO BUILD ==='
           ls -lh /tmp/zecapao_build/Ativos/Marca/zecapao_*
 
       - name: Configure Android identity and Maps
@@ -160,10 +116,9 @@ jobs:
           g = re.sub(r'applicationId\s*=\s*"[^"]+"', 'applicationId = "com.zecapao.entrega"', g)
           gradle.write_text(g)
           PY
-
           echo '=== ANDROID PACKAGE CHECK ==='
           grep -E 'namespace|applicationId' android/app/build.gradle.kts
-          test "$GOOGLE_MAPS_API_KEY" != "" || { echo 'GOOGLE_MAPS_API_KEY ausente'; exit 1; }
+          test -n "$GOOGLE_MAPS_API_KEY" || { echo 'GOOGLE_MAPS_API_KEY ausente'; exit 1; }
 
       - name: Install dependencies
         working-directory: /tmp/zecapao_build
