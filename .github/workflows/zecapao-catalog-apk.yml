@@ -8,7 +8,7 @@ on:
       - 'zecapao_beta/lib/catalog/**'
       - 'zecapao_beta/lib/main_catalog.dart'
       - 'zecapao_beta/pubspec.yaml'
-      - '.github/assets/zecapao_icon.xpm'
+      - 'zecapao_beta/Ativos/Marca/**'
       - '.github/workflows/zecapao-catalog-apk.yml'
 
 jobs:
@@ -59,12 +59,18 @@ jobs:
         working-directory: zecapao_beta
         run: flutter pub get
 
-      - name: Build launcher source
+      - name: Validate official branding
+        working-directory: zecapao_beta
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq imagemagick
-          mkdir -p zecapao_beta/Ativos/Marca
-          convert .github/assets/zecapao_icon.xpm -resize 512x512 zecapao_beta/Ativos/Marca/zecapao_app_icon.png
+          test -f Ativos/Marca/zecapao_app_icon.png
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('Ativos/Marca/zecapao_app_icon.png')
+          sig = p.read_bytes()[:8]
+          if sig != b'\x89PNG\r\n\x1a\n':
+              raise SystemExit('zecapao_app_icon.png nao e um PNG valido')
+          print('Branding oficial validado:', p, p.stat().st_size, 'bytes')
+          PY
 
       - name: Generate Android launcher icons
         working-directory: zecapao_beta
@@ -81,6 +87,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-catalog-1.9-mvp-comercial-apk
+          name: zecapao-mvp-0.2.0-apk
           path: zecapao_beta/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
