@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'catalog/core.dart';
-import 'catalog/commerce_home_v2.dart';
+import 'catalog/signup_required.dart';
 
 const supabaseUrl='https://yovjbqtazkreruvxoawf.supabase.co';
 const supabasePublishableKey='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdmpicXRhemtyZXJ1dnhvYXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1NjA1NTgsImV4cCI6MjEwMjEzNjU1OH0.4uwUVON1aNdH1D1UKMzNaOn5xplGf1ffwNkcwSw_30U';
@@ -32,7 +32,7 @@ class CatalogApp extends StatelessWidget{
         navigationBarTheme:NavigationBarThemeData(backgroundColor:Colors.white,indicatorColor:brandRedSoft,height:70,labelTextStyle:WidgetStatePropertyAll(GoogleFonts.poppins(fontSize:11,fontWeight:FontWeight.w700)),iconTheme:WidgetStateProperty.resolveWith((states)=>IconThemeData(color:states.contains(WidgetState.selected)?brandRed:brandInk.withValues(alpha:.62)))),
         chipTheme:ChipThemeData(backgroundColor:Colors.white,selectedColor:brandRed,secondarySelectedColor:brandRed,labelStyle:GoogleFonts.poppins(fontSize:12,fontWeight:FontWeight.w700),secondaryLabelStyle:GoogleFonts.poppins(fontSize:12,fontWeight:FontWeight.w700,color:Colors.white),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)),side:BorderSide.none),
       ),
-      home:const CommerceSignupPage(),
+      home:const RequiredSignupPage(),
     );
   }
 }
