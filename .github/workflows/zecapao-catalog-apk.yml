@@ -39,7 +39,9 @@ jobs:
           import os
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           text = manifest.read_text()
-          key = os.environ.get('GOOGLE_MAPS_API_KEY') or 'MISSING_MAPS_KEY'
+          key = (os.environ.get('GOOGLE_MAPS_API_KEY') or '').strip()
+          if not key:
+              raise SystemExit('GOOGLE_MAPS_API_KEY nao configurada nos Secrets do repositorio. Build bloqueada para nao gerar APK sem mapa.')
           marker = '<manifest xmlns:android="http://schemas.android.com/apk/res/android">'
           if 'android.permission.ACCESS_FINE_LOCATION' not in text:
               text = text.replace(marker, marker + '\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />', 1)
@@ -50,6 +52,9 @@ jobs:
                   raise SystemExit('Nao encontrei a tag application para inserir Maps API key.')
               text = text.replace(app_icon, metadata, 1)
           manifest.write_text(text)
+          if key not in manifest.read_text():
+              raise SystemExit('Falha ao injetar GOOGLE_MAPS_API_KEY no AndroidManifest.xml')
+          print('Google Maps configurado: chave presente e injetada no Manifest.')
           gradle = Path('android/app/build.gradle.kts')
           g = gradle.read_text().replace('minSdk = flutter.minSdkVersion', 'minSdk = 24')
           gradle.write_text(g)
@@ -63,13 +68,19 @@ jobs:
         working-directory: zecapao_beta
         run: |
           test -f Ativos/Marca/zecapao_app_icon.png
+          test -f Ativos/Marca/zecafe_logo_oficial.jpg
+          test -f Ativos/Marca/zecafe_banner_oficial.jpg
           python3 - <<'PY'
           from pathlib import Path
           p = Path('Ativos/Marca/zecapao_app_icon.png')
           sig = p.read_bytes()[:8]
           if sig != b'\x89PNG\r\n\x1a\n':
               raise SystemExit('zecapao_app_icon.png nao e um PNG valido')
-          print('Branding oficial validado:', p, p.stat().st_size, 'bytes')
+          for f in ['Ativos/Marca/zecafe_logo_oficial.jpg','Ativos/Marca/zecafe_banner_oficial.jpg']:
+              b=Path(f).read_bytes()[:3]
+              if b != b'\xff\xd8\xff':
+                  raise SystemExit(f'{f} nao e um JPEG valido')
+          print('Branding oficial e Zecafe validados.')
           PY
 
       - name: Generate Android launcher icons
