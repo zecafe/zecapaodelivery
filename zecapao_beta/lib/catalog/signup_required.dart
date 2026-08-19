@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core.dart';
-import 'commerce_home_v2.dart';
+import 'commerce_home_v3.dart';
 
 class RequiredSignupPage extends StatefulWidget {
   const RequiredSignupPage({super.key});
@@ -42,7 +42,7 @@ class _RequiredSignupPageState extends State<RequiredSignupPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => CommerceHomePage(customerName: n, phone: p),
+        builder: (_) => CommerceHomeV3Page(customerName: n, phone: p),
       ),
     );
   }
