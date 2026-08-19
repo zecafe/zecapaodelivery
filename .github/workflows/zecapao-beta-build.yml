@@ -90,13 +90,13 @@ jobs:
           echo '=== ICON USED BY BUILD ==='
           file /tmp/zecapao_build/Ativos/Marca/zecapao_app_icon.png
 
-      - name: Configure Android identity and Maps
+      - name: Configure Android identity, MainActivity and Maps
         working-directory: /tmp/zecapao_build
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import os, re
+          import os, re, shutil
 
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           text = manifest.read_text()
@@ -118,9 +118,25 @@ jobs:
           g = re.sub(r'namespace\s*=\s*"[^"]+"', 'namespace = "com.zecapao.entrega"', g)
           g = re.sub(r'applicationId\s*=\s*"[^"]+"', 'applicationId = "com.zecapao.entrega"', g)
           gradle.write_text(g)
+
+          candidates = list(Path('android/app/src/main').rglob('MainActivity.kt'))
+          if not candidates:
+              raise SystemExit('MainActivity.kt nao encontrada no projeto Android gerado')
+          src = candidates[0]
+          main = src.read_text()
+          main = re.sub(r'^package\s+[^\n]+', 'package com.zecapao.entrega', main, flags=re.M)
+          dst = Path('android/app/src/main/kotlin/com/zecapao/entrega/MainActivity.kt')
+          dst.parent.mkdir(parents=True, exist_ok=True)
+          dst.write_text(main)
+          if src.resolve() != dst.resolve():
+              src.unlink()
+          print('MainActivity alinhada:', dst)
+          print(dst.read_text())
           PY
           echo '=== ANDROID PACKAGE CHECK ==='
           grep -E 'namespace|applicationId' android/app/build.gradle.kts
+          echo '=== MAIN ACTIVITY CHECK ==='
+          grep -R '^package com.zecapao.entrega' android/app/src/main/kotlin/com/zecapao/entrega/MainActivity.kt
           test -n "$GOOGLE_MAPS_API_KEY" || { echo 'GOOGLE_MAPS_API_KEY ausente'; exit 1; }
 
       - name: Install dependencies
@@ -142,7 +158,7 @@ jobs:
       - name: Upload MVP APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-1.9.4-safe-icone-oficial-apk
+          name: zecapao-1.9.5-safe-mainactivity-fix-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
