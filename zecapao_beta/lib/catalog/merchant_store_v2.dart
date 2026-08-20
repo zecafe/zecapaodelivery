@@ -23,8 +23,23 @@ class _MerchantStoreV2PageState extends State<MerchantStoreV2Page>{
     return Image.network(widget.store.logoUrl,width:size,height:size,fit:BoxFit.contain,errorBuilder:(_,__,___)=>local);
   }
   Widget placeholderHero()=>Container(decoration:const BoxDecoration(gradient:LinearGradient(colors:[brandRed,Color(0xFFFF8A2B)],begin:Alignment.topLeft,end:Alignment.bottomRight)),child:Stack(children:[Positioned(right:-30,top:10,child:Icon(Icons.landscape_rounded,size:190,color:Colors.white24)),Positioned(left:24,bottom:28,child:Text(widget.store.name,style:const TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w900)))]));
+  Widget zecafeHero()=>Container(
+    color: const Color(0xFF715441),
+    child: Stack(children:[
+      Positioned.fill(child:Container(decoration:const BoxDecoration(gradient:LinearGradient(colors:[Color(0xFF6A4D3B),Color(0xFF8C6A50)],begin:Alignment.centerLeft,end:Alignment.centerRight)))),
+      Positioned(right:-10,bottom:-12,child:Opacity(opacity:.96,child:Image.asset('Ativos/Marca/zecafe_products/banoffee.webp',width:210,height:185,fit:BoxFit.cover,errorBuilder:(_,__,___)=>const SizedBox.shrink()))),
+      Positioned(right:132,top:14,child:Opacity(opacity:.9,child:Image.asset('Ativos/Marca/zecafe_products/capuccino.webp',width:92,height:92,fit:BoxFit.cover,errorBuilder:(_,__,___)=>const SizedBox.shrink()))),
+      Positioned(left:22,top:42,right:185,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Text('RESPIRA...\nVOCÊ CHEGOU!',style:TextStyle(color:Colors.white,fontSize:21,height:1.0,fontWeight:FontWeight.w900,letterSpacing:.2)),
+        const SizedBox(height:12),
+        Image.asset('Ativos/Marca/zecafe_logo_oficial.jpg',height:62,fit:BoxFit.contain,alignment:Alignment.centerLeft,errorBuilder:(_,__,___)=>const Text('Zecafé',style:TextStyle(color:Color(0xFFF3E3C7),fontSize:34,fontWeight:FontWeight.w900))),
+        const SizedBox(height:8),
+        const Text('Café • afeto • Vale do Capão',style:TextStyle(color:Color(0xFFF3E3C7),fontSize:11,fontWeight:FontWeight.w700)),
+      ])),
+    ]),
+  );
   Widget merchantHero(){
-    if(isZecafe)return Image.asset(widget.store.localCover,fit:BoxFit.cover,errorBuilder:(_,__,___)=>placeholderHero());
+    if(isZecafe)return zecafeHero();
     if(widget.store.coverUrl.isEmpty)return placeholderHero();
     return Image.network(widget.store.coverUrl,fit:BoxFit.cover,errorBuilder:(_,__,___)=>placeholderHero());
   }
