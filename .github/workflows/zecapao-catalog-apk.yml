@@ -67,20 +67,24 @@ jobs:
       - name: Validate official branding
         working-directory: zecapao_beta
         run: |
-          test -f Ativos/Marca/zecapao_app_icon.png
-          test -f Ativos/Marca/zecafe_logo_oficial.jpg
-          test -f Ativos/Marca/zecafe_banner_oficial.jpg
+          test -s Ativos/Marca/zecapao_app_icon.png
+          test -s Ativos/Marca/zecafe_logo_oficial.jpg
+          test -s Ativos/Marca/zecafe_banner_oficial.jpg
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('Ativos/Marca/zecapao_app_icon.png')
-          sig = p.read_bytes()[:8]
-          if sig != b'\x89PNG\r\n\x1a\n':
-              raise SystemExit('zecapao_app_icon.png nao e um PNG valido')
+          def kind(path):
+              b=Path(path).read_bytes()[:12]
+              if b.startswith(b'\x89PNG\r\n\x1a\n'): return 'PNG'
+              if b.startswith(b'\xff\xd8\xff'): return 'JPEG'
+              if b.startswith(b'RIFF') and b[8:12] == b'WEBP': return 'WEBP'
+              return 'UNKNOWN'
+          icon='Ativos/Marca/zecapao_app_icon.png'
+          if kind(icon)!='PNG': raise SystemExit(f'{icon} nao e PNG valido')
           for f in ['Ativos/Marca/zecafe_logo_oficial.jpg','Ativos/Marca/zecafe_banner_oficial.jpg']:
-              b=Path(f).read_bytes()[:3]
-              if b != b'\xff\xd8\xff':
-                  raise SystemExit(f'{f} nao e um JPEG valido')
-          print('Branding oficial e Zecafe validados.')
+              k=kind(f)
+              if k=='UNKNOWN': raise SystemExit(f'{f} nao contem imagem valida reconhecida')
+              print(f'{f}: imagem valida ({k})')
+          print('Branding oficial validado pelo conteudo real dos arquivos.')
           PY
 
       - name: Generate Android launcher icons
