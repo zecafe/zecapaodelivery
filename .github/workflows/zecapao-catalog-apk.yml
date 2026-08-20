@@ -69,7 +69,6 @@ jobs:
         run: |
           test -s Ativos/Marca/zecapao_app_icon.png
           test -s Ativos/Marca/zecafe_logo_oficial.jpg
-          test -s Ativos/Marca/zecafe_banner_oficial.jpg
           python3 - <<'PY'
           from pathlib import Path
           def kind(path):
@@ -80,11 +79,9 @@ jobs:
               return 'UNKNOWN'
           icon='Ativos/Marca/zecapao_app_icon.png'
           if kind(icon)!='PNG': raise SystemExit(f'{icon} nao e PNG valido')
-          for f in ['Ativos/Marca/zecafe_logo_oficial.jpg','Ativos/Marca/zecafe_banner_oficial.jpg']:
-              k=kind(f)
-              if k=='UNKNOWN': raise SystemExit(f'{f} nao contem imagem valida reconhecida')
-              print(f'{f}: imagem valida ({k})')
-          print('Branding oficial validado pelo conteudo real dos arquivos.')
+          logo='Ativos/Marca/zecafe_logo_oficial.jpg'
+          if kind(logo)=='UNKNOWN': raise SystemExit(f'{logo} nao contem imagem valida reconhecida')
+          print('Branding essencial validado. Hero do Zecafe e renderizado no Flutter.')
           PY
 
       - name: Generate Android launcher icons
