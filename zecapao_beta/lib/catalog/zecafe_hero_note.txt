@@ -1,0 +1,1 @@
+Zecafe hero is rendered directly in Flutter to avoid dependency on a corrupt legacy banner binary.
