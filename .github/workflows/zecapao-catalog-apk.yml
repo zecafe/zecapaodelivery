@@ -98,6 +98,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-mvp-0.2.0-apk
+          name: zecapao-mvp-0.2.1-candidate-apk
           path: zecapao_beta/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
