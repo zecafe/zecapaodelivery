@@ -119,7 +119,7 @@ jobs:
           from pathlib import Path
           p=Path('Ativos/Marca/zecapao_app_icon.png')
           if p.read_bytes()[:8] != b'\x89PNG\r\n\x1a\n': raise SystemExit('Icone oficial invalido')
-          print('Branding essencial validado. Assets extras serao adicionados individualmente.')
+          print('Branding essencial validado. Showcase visual e renderizado pelo Flutter.')
           PY
 
       - name: Generate Android launcher icons
@@ -137,6 +137,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-mvp-0.2.2-maps-hotfix-apk
+          name: zecapao-mvp-0.2.3-showcase-apk
           path: zecapao_beta/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
