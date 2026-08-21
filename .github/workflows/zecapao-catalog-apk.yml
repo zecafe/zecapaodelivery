@@ -19,22 +19,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           flutter-version: '3.44.9'
           cache: true
+
       - name: Restore stable Android debug signing key
         uses: actions/cache@v4
         with:
           path: ~/.android/debug.keystore
           key: zecapao-android-debug-keystore-v1
+
       - name: Ensure stable debug signing key
         shell: bash
         run: |
@@ -42,9 +46,11 @@ jobs:
           if [ ! -f "$HOME/.android/debug.keystore" ]; then
             keytool -genkeypair -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Zecapao,C=BR"
           fi
+
       - name: Restore Android project
         working-directory: zecapao_beta
         run: flutter create --platforms=android --org com.zecapao --project-name zecapao_delivery .
+
       - name: Configure Android identity and Maps
         working-directory: zecapao_beta
         run: |
@@ -72,21 +78,26 @@ jobs:
           src=candidates[0]
           main=re.sub(r'^package\s+[^\n]+','package com.zecapao.entrega',src.read_text(),flags=re.M)
           dst=Path('android/app/src/main/kotlin/com/zecapao/entrega/MainActivity.kt')
-          dst.parent.mkdir(parents=True,exist_ok=True); dst.write_text(main)
+          dst.parent.mkdir(parents=True,exist_ok=True)
+          dst.write_text(main)
           if src.resolve()!=dst.resolve(): src.unlink()
           PY
+
       - name: Dependencies
         working-directory: zecapao_beta
         run: flutter pub get
+
       - name: Validate essential branding
         working-directory: zecapao_beta
         run: |
           test -s Ativos/Marca/zecapao_app_icon.png
           test -s Ativos/Marca/zecafe_logo_oficial.jpg
           test -s Ativos/Marca/zecafe_products/espresso.webp
+
       - name: Generate Android launcher icons
         working-directory: zecapao_beta
         run: dart run flutter_launcher_icons
+
       - name: Repair showcase occasion rail syntax
         working-directory: zecapao_beta
         shell: bash
@@ -100,16 +111,67 @@ jobs:
           if old not in s: raise SystemExit('Trecho esperado do occasion rail nao encontrado')
           p.write_text(s.replace(old,new,1))
           PY
-          dart format lib/catalog/showcase_home.dart
+
+      - name: Apply MVP 0.2.6 navigation rules
+        working-directory: zecapao_beta
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lib/catalog/showcase_home.dart')
+          s=p.read_text()
+
+          if "import 'hospedagens_page.dart';" not in s:
+              marker="import 'branded_store.dart';"
+              if marker not in s: raise SystemExit('Import marker not found')
+              s=s.replace(marker, marker+"\nimport 'hospedagens_page.dart';",1)
+
+          old="""          Container(\n            height: 58,\n            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(19), boxShadow: const [BoxShadow(color: Color(0x10000000), blurRadius: 18, offset: Offset(0, 7))]),\n            child: const Row(children: [SizedBox(width: 18), Icon(Icons.search_rounded, size: 28), SizedBox(width: 14), Expanded(child: Text('O que você procura no Vale?', style: TextStyle(color: brandMuted, fontSize: 16)))]),\n          ),"""
+          new="""          InkWell(\n            onTap: () => setState(() => tab = 1),\n            borderRadius: BorderRadius.circular(19),\n            child: Container(\n              height: 58,\n              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(19), boxShadow: const [BoxShadow(color: Color(0x10000000), blurRadius: 18, offset: Offset(0, 7))]),\n              child: const Row(children: [SizedBox(width: 18), Icon(Icons.search_rounded, size: 28), SizedBox(width: 14), Expanded(child: Text('O que você procura no Vale?', style: TextStyle(color: brandMuted, fontSize: 16)))]),\n            ),\n          ),"""
+          if old not in s: raise SystemExit('Search box marker not found')
+          s=s.replace(old,new,1)
+
+          old="TextButton(onPressed: () {}, child: const Text('Ver agenda'))"
+          new="TextButton(onPressed: () => setState(() => tab = 3), child: const Text('Ver agenda'))"
+          if old not in s: raise SystemExit('Agenda marker not found')
+          s=s.replace(old,new,1)
+
+          old="return SizedBox(width: 76, child: Column(children: ["
+          new="return InkWell(onTap: () { if (i == 4) { Navigator.push(context, MaterialPageRoute(builder: (_) => const HospedagensPage())); } else { setState(() => tab = 1); } }, borderRadius: BorderRadius.circular(23), child: SizedBox(width: 76, child: Column(children: ["
+          if old not in s: raise SystemExit('Category tile marker not found')
+          s=s.replace(old,new,1)
+
+          old="      ]));\n    }));\n  }\n\n  Widget _zecafeHero"
+          new="      ])));\n    }));\n  }\n\n  Widget _zecafeHero"
+          if old not in s: raise SystemExit('Category closing marker not found')
+          s=s.replace(old,new,1)
+
+          s=s.replace("const Center(child: Text('MVP 0.2.3 • SHOWCASE'", "const Center(child: Text('MVP 0.2.6 • PREMIUM'",1)
+          p.write_text(s)
+          PY
+          dart format lib/catalog/showcase_home.dart lib/catalog/hospedagens_page.dart lib/catalog/showcase_shell.dart
+
+      - name: Validate navigation contract
+        working-directory: zecapao_beta
+        run: |
+          grep -q "HospedagensPage" lib/catalog/showcase_home.dart
+          grep -q "tab = 1" lib/catalog/showcase_home.dart
+          grep -q "tab = 3" lib/catalog/showcase_home.dart
+          ! grep -q "POUSADA DEMO" lib/catalog/showcase_shell.dart
+          grep -q "FAZER RESERVA" lib/catalog/pousada_demo.dart
+          echo 'Contrato minimo de navegacao validado.'
+
       - name: Analyze catalog
         working-directory: zecapao_beta
         run: flutter analyze lib/main_catalog.dart lib/catalog --no-fatal-infos --no-fatal-warnings
+
       - name: Build APK
         working-directory: zecapao_beta
         run: flutter build apk --debug --target=lib/main_catalog.dart
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-mvp-0.2.5-showcase-pousada-stable-apk
+          name: zecapao-mvp-0.2.6-premium-navigation-apk
           path: zecapao_beta/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
