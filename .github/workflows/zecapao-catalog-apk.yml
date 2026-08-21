@@ -19,26 +19,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           flutter-version: '3.44.9'
           cache: true
-
       - name: Restore stable Android debug signing key
         uses: actions/cache@v4
         with:
           path: ~/.android/debug.keystore
           key: zecapao-android-debug-keystore-v1
-
       - name: Ensure stable debug signing key
         shell: bash
         run: |
@@ -46,11 +42,9 @@ jobs:
           if [ ! -f "$HOME/.android/debug.keystore" ]; then
             keytool -genkeypair -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Zecapao,C=BR"
           fi
-
       - name: Restore Android project
         working-directory: zecapao_beta
         run: flutter create --platforms=android --org com.zecapao --project-name zecapao_delivery .
-
       - name: Configure Android identity and Maps
         working-directory: zecapao_beta
         run: |
@@ -78,34 +72,41 @@ jobs:
           src=candidates[0]
           main=re.sub(r'^package\s+[^\n]+','package com.zecapao.entrega',src.read_text(),flags=re.M)
           dst=Path('android/app/src/main/kotlin/com/zecapao/entrega/MainActivity.kt')
-          dst.parent.mkdir(parents=True,exist_ok=True)
-          dst.write_text(main)
+          dst.parent.mkdir(parents=True,exist_ok=True); dst.write_text(main)
           if src.resolve()!=dst.resolve(): src.unlink()
           PY
-
       - name: Dependencies
         working-directory: zecapao_beta
         run: flutter pub get
-
       - name: Validate essential branding
         working-directory: zecapao_beta
         run: |
           test -s Ativos/Marca/zecapao_app_icon.png
           test -s Ativos/Marca/zecafe_logo_oficial.jpg
           test -s Ativos/Marca/zecafe_products/espresso.webp
-
       - name: Generate Android launcher icons
         working-directory: zecapao_beta
         run: dart run flutter_launcher_icons
-
+      - name: Repair showcase occasion rail syntax
+        working-directory: zecapao_beta
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lib/catalog/showcase_home.dart')
+          s=p.read_text()
+          old='''return SizedBox(height: 150, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: items.length, separatorBuilder: (_, __) => const SizedBox(width: 11), itemBuilder: (_, i) { final x = items[i]; return Container(width: 222, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(gradient: LinearGradient(colors: x.$4), borderRadius: BorderRadius.circular(25)), child: Stack(children: [Positioned(right: -3, bottom: -3, child: Icon(x.$3, size: 88, color: Colors.white.withValues(alpha: .88))), Positioned(right: -30, top: -35, child: Container(width: 115, height: 115, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), shape: BoxShape.circle))), Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [SizedBox(width: 145, child: Text(x.$1, style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.05, fontWeight: FontWeight.w900))), const SizedBox(height: 7), SizedBox(width: 125, child: Text(x.$2, style: const TextStyle(color: Colors.white70, fontSize: 10.5, height: 1.25)))])]))); }));'''
+          new='''return SizedBox(height: 150, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: items.length, separatorBuilder: (_, __) => const SizedBox(width: 11), itemBuilder: (_, i) { final x = items[i]; return Container(width: 222, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(gradient: LinearGradient(colors: x.$4), borderRadius: BorderRadius.circular(25)), child: Stack(children: [Positioned(right: -3, bottom: -3, child: Icon(x.$3, size: 88, color: Colors.white.withValues(alpha: .88))), Positioned(right: -30, top: -35, child: Container(width: 115, height: 115, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), shape: BoxShape.circle))), Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [SizedBox(width: 145, child: Text(x.$1, style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.05, fontWeight: FontWeight.w900))), const SizedBox(height: 7), SizedBox(width: 125, child: Text(x.$2, style: const TextStyle(color: Colors.white70, fontSize: 10.5, height: 1.25)))]))])); }));'''
+          if old not in s: raise SystemExit('Trecho esperado do occasion rail nao encontrado')
+          p.write_text(s.replace(old,new,1))
+          PY
+          dart format lib/catalog/showcase_home.dart
       - name: Analyze catalog
         working-directory: zecapao_beta
         run: flutter analyze lib/main_catalog.dart lib/catalog --no-fatal-infos --no-fatal-warnings
-
       - name: Build APK
         working-directory: zecapao_beta
         run: flutter build apk --debug --target=lib/main_catalog.dart
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
