@@ -59,26 +59,6 @@ jobs:
           echo '=== ZECAPAO DEBUG SHA1 ==='
           keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | grep 'SHA1:'
 
-      - name: Restore real partner and event assets
-        working-directory: zecapao_beta
-        shell: bash
-        run: |
-          test -s Ativos/Marca/mvp_assets_bundle.tar.gz.b64 || { echo 'Bundle de assets ausente'; exit 1; }
-          base64 -d Ativos/Marca/mvp_assets_bundle.tar.gz.b64 > /tmp/mvp_assets_bundle.tar.gz
-          tar -xzf /tmp/mvp_assets_bundle.tar.gz -C Ativos/Marca
-          echo '=== ASSETS RESTAURADOS ==='
-          ls -lh Ativos/Marca/pizza_lab.jpg Ativos/Marca/pico_acai.jpg Ativos/Marca/garimpo_burger.jpg Ativos/Marca/cafe_duvalle.jpg Ativos/Marca/dona_beli.jpg Ativos/Marca/evento_reggae.jpg Ativos/Marca/evento_jazz.jpg
-          python3 - <<'PY'
-          from pathlib import Path
-          required=['pizza_lab.jpg','pico_acai.jpg','garimpo_burger.jpg','cafe_duvalle.jpg','dona_beli.jpg','evento_reggae.jpg','evento_jazz.jpg']
-          for name in required:
-              p=Path('Ativos/Marca')/name
-              b=p.read_bytes()
-              if len(b)<1000 or not b.startswith(b'\xff\xd8\xff'):
-                  raise SystemExit(f'Asset local invalido: {name} ({len(b)} bytes)')
-          print('Parceiros e eventos locais validados.')
-          PY
-
       - name: Restore Android project
         working-directory: zecapao_beta
         run: flutter create --platforms=android --org com.zecapao --project-name zecapao_delivery .
@@ -135,13 +115,11 @@ jobs:
           test -s Ativos/Marca/zecapao_app_icon.png
           test -s Ativos/Marca/zecafe_logo_oficial.jpg
           test -s Ativos/Marca/zecafe_products/espresso.webp
-          test -s Ativos/Marca/pizza_lab.jpg
-          test -s Ativos/Marca/evento_reggae.jpg
           python3 - <<'PY'
           from pathlib import Path
           p=Path('Ativos/Marca/zecapao_app_icon.png')
           if p.read_bytes()[:8] != b'\x89PNG\r\n\x1a\n': raise SystemExit('Icone oficial invalido')
-          print('Branding, produtos, parceiros e eventos locais presentes.')
+          print('Branding essencial validado. Assets extras serao adicionados individualmente.')
           PY
 
       - name: Generate Android launcher icons
@@ -159,6 +137,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-mvp-0.2.2-local-assets-maps-apk
+          name: zecapao-mvp-0.2.2-maps-hotfix-apk
           path: zecapao_beta/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
