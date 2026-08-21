@@ -20,6 +20,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore Pousada demo branding
+        working-directory: zecapao_beta
+        run: |
+          test -s Ativos/Marca/pousada_logo_demo.b64
+          base64 -d Ativos/Marca/pousada_logo_demo.b64 > Ativos/Marca/pousada_logo_demo.jpg
+          test -s Ativos/Marca/pousada_logo_demo.jpg
+          echo 'Pousada do Capao demo branding restaurado.'
+
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -115,11 +123,12 @@ jobs:
           test -s Ativos/Marca/zecapao_app_icon.png
           test -s Ativos/Marca/zecafe_logo_oficial.jpg
           test -s Ativos/Marca/zecafe_products/espresso.webp
+          test -s Ativos/Marca/pousada_logo_demo.jpg
           python3 - <<'PY'
           from pathlib import Path
           p=Path('Ativos/Marca/zecapao_app_icon.png')
           if p.read_bytes()[:8] != b'\x89PNG\r\n\x1a\n': raise SystemExit('Icone oficial invalido')
-          print('Branding essencial validado. Showcase visual e renderizado pelo Flutter.')
+          print('Branding essencial e demo da Pousada validados.')
           PY
 
       - name: Generate Android launcher icons
@@ -137,6 +146,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-mvp-0.2.3-showcase-apk
+          name: zecapao-mvp-0.2.4-showcase-pousada-apk
           path: zecapao_beta/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
