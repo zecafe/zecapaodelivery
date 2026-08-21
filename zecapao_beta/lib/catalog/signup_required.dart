@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core.dart';
-import 'showcase_home.dart';
+import 'showcase_shell.dart';
 
 class RequiredSignupPage extends StatefulWidget {
   const RequiredSignupPage({super.key});
@@ -42,7 +42,7 @@ class _RequiredSignupPageState extends State<RequiredSignupPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => ShowcaseHomePage(customerName: n, phone: p),
+        builder: (_) => ShowcaseShellPage(customerName: n, phone: p),
       ),
     );
   }
