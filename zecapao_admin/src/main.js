@@ -1,151 +1,23 @@
 import { createClient } from '@supabase/supabase-js'
 import './styles.css'
 
-const supabase = createClient(
-  'https://yovjbqtazkreruvxoawf.supabase.co',
-  'sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor'
-)
-
-const state = { session:null, admin:false, tab:'dashboard', data:{} }
-const app = document.querySelector('#app')
-
-const esc = (v='') => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
-const money = v => `R$ ${Number(v||0).toFixed(2).replace('.',',')}`
-
-async function isAdmin(session){
-  if(!session?.user?.id) return false
-  const {data,error}=await supabase.from('profiles').select('role').eq('id',session.user.id).maybeSingle()
-  return !error && data?.role==='admin'
-}
-
-async function loadAll(){
-  const queries = await Promise.all([
-    supabase.from('app_entry_config').select('*').order('sort_order'),
-    supabase.from('home_sections').select('*').order('sort_order'),
-    supabase.from('stores').select('*').order('name'),
-    supabase.from('products').select('*').order('sort_order'),
-    supabase.from('orders').select('*').order('created_at',{ascending:false}).limit(30),
-    supabase.from('events').select('*').order('starts_at',{ascending:true}),
-    supabase.from('campaign_banners').select('*').order('sort_order')
-  ])
-  const keys=['entry','home','stores','products','orders','events','banners']
-  queries.forEach((r,i)=> state.data[keys[i]]=r.data||[])
-}
-
-function loginView(message='',ok=false){
-  app.innerHTML = `<main class="login"><section class="login-card">
-    <div class="brand-mark">ZÉ<br><b>CAPÃO</b></div>
-    <p class="eyebrow">ADMIN v0.2</p><h1>O painel que controla o Vale.</h1>
-    <p class="muted">Acesso restrito à administração do Zé Capão.</p>
-    <form id="loginForm"><label>E-mail<input name="email" type="email" required autocomplete="username"></label><label>Senha<input name="password" type="password" required autocomplete="current-password"></label>
-    ${message?`<div class="${ok?'success':'error'}">${esc(message)}</div>`:''}<button>ENTRAR</button>
-    <button type="button" id="forgotPassword" class="text-button">Esqueci minha senha</button></form>
-  </section></main>`
-  document.querySelector('#forgotPassword').onclick=()=>forgotView()
-  document.querySelector('#loginForm').onsubmit = async e => {
-    e.preventDefault(); const fd=new FormData(e.currentTarget)
-    const {data,error}=await supabase.auth.signInWithPassword({email:fd.get('email'),password:fd.get('password')})
-    if(error) return loginView('E-mail ou senha inválidos.')
-    if(!(await isAdmin(data.session))){ await supabase.auth.signOut(); return loginView('Esta conta não possui permissão administrativa.') }
-    await boot(data.session)
-  }
-}
-
-function forgotView(message='',ok=false){
-  app.innerHTML=`<main class="login"><section class="login-card">
-    <div class="brand-mark">ZÉ<br><b>CAPÃO</b></div>
-    <p class="eyebrow">RECUPERAÇÃO</p><h1>Recuperar senha</h1>
-    <p class="muted">Informe o e-mail da sua conta administrativa.</p>
-    <form id="forgotForm"><label>E-mail<input name="email" type="email" required autocomplete="email" value="carlosright@gmail.com"></label>
-    ${message?`<div class="${ok?'success':'error'}">${esc(message)}</div>`:''}<button>ENVIAR LINK</button>
-    <button type="button" id="backLogin" class="text-button">Voltar ao login</button></form>
-  </section></main>`
-  document.querySelector('#backLogin').onclick=()=>loginView()
-  document.querySelector('#forgotForm').onsubmit=async e=>{
-    e.preventDefault(); const email=new FormData(e.currentTarget).get('email')
-    const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:'https://zecapao-admin.vercel.app/'})
-    if(error) return forgotView(error.message)
-    forgotView('Link enviado. Abra seu e-mail e clique na recuperação de senha.',true)
-  }
-}
-
-function newPasswordView(message=''){
-  app.innerHTML=`<main class="login"><section class="login-card">
-    <div class="brand-mark">ZÉ<br><b>CAPÃO</b></div>
-    <p class="eyebrow">NOVA SENHA</p><h1>Crie uma nova senha</h1>
-    <p class="muted">Escolha uma senha com pelo menos 8 caracteres.</p>
-    <form id="passwordForm"><label>Nova senha<input name="password" type="password" minlength="8" required autocomplete="new-password"></label><label>Confirmar senha<input name="confirm" type="password" minlength="8" required autocomplete="new-password"></label>
-    ${message?`<div class="error">${esc(message)}</div>`:''}<button>SALVAR NOVA SENHA</button></form>
-  </section></main>`
-  document.querySelector('#passwordForm').onsubmit=async e=>{
-    e.preventDefault(); const fd=new FormData(e.currentTarget)
-    if(fd.get('password')!==fd.get('confirm')) return newPasswordView('As senhas não coincidem.')
-    const {error}=await supabase.auth.updateUser({password:fd.get('password')})
-    if(error) return newPasswordView(error.message)
-    await supabase.auth.signOut(); loginView('Senha alterada com sucesso. Entre com a nova senha.',true)
-  }
-}
-
-const menu = [
-  ['dashboard','Dashboard','◫'],['entry','Tela de Entrada','◉'],['home','Home','⌂'],['stores','Parceiros','◆'],['products','Produtos','▦'],['orders','Pedidos','≡'],['events','Eventos','★'],['media','Mídias','▣']
-]
-
-function shell(content){
-  app.innerHTML = `<div class="layout"><aside><div class="logo">Zé Capão <span>ADMIN</span></div><nav>${menu.map(([id,label,icon])=>`<button data-tab="${id}" class="${state.tab===id?'active':''}"><i>${icon}</i>${label}</button>`).join('')}</nav><button id="logout" class="logout">Sair</button></aside><main><header><div><p class="eyebrow">ZÉ CAPÃO ADMIN</p><h1>${menu.find(x=>x[0]===state.tab)?.[1]||''}</h1></div><div class="status">● online</div></header>${content}</main></div>`
-  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{state.tab=b.dataset.tab;render()})
-  document.querySelector('#logout').onclick=()=>supabase.auth.signOut()
-}
-
-function dashboard(){
-  const d=state.data
-  return `<section class="grid stats"><article><span>Parceiros</span><b>${d.stores.length}</b></article><article><span>Produtos</span><b>${d.products.length}</b></article><article><span>Pedidos recentes</span><b>${d.orders.length}</b></article><article><span>Eventos</span><b>${d.events.length}</b></article></section><section class="panel"><h2>Central editorial</h2><p class="muted">A partir daqui, o conteúdo do app deixa de depender de uma nova APK. O Admin passa a comandar entrada, Home, parceiros, produtos e campanhas.</p></section>`
-}
-
-function entry(){
-  const rows=state.data.entry
-  return `<section class="panel"><div class="panel-head"><div><h2>Tela de Entrada</h2><p class="muted">Defina se a abertura será login, campanha ou mídia.</p></div></div>${rows.map(x=>`<article class="editor-card"><div class="row"><div><b>${esc(x.name)}</b><small>${esc(x.mode)}</small></div><label class="switch"><input type="checkbox" data-entry-active="${x.id}" ${x.is_active?'checked':''}><span></span></label></div><div class="form-grid"><label>Título<input data-field="title" data-id="${x.id}" value="${esc(x.title)}"></label><label>Modo<select data-field="mode" data-id="${x.id}">${['login','login_campaign','media_fullscreen','media_then_login'].map(m=>`<option ${x.mode===m?'selected':''}>${m}</option>`).join('')}</select></label><label>URL da mídia<input data-field="media_url" data-id="${x.id}" value="${esc(x.media_url)}" placeholder="https://..."></label><label>Duração (s)<input type="number" min="1" max="30" data-field="media_duration_seconds" data-id="${x.id}" value="${x.media_duration_seconds}"></label></div><button class="save" data-save-entry="${x.id}">Salvar alterações</button></article>`).join('')}</section>`
-}
-
-function home(){
-  return `<section class="panel"><div class="panel-head"><div><h2>Seções da Home</h2><p class="muted">Ordem e visibilidade do app.</p></div></div><div class="list">${state.data.home.map(x=>`<article class="list-row"><div class="order">${x.sort_order}</div><div class="grow"><b>${esc(x.title)}</b><small>${esc(x.section_type)}</small></div><label class="switch"><input type="checkbox" data-home-active="${x.id}" ${x.is_active?'checked':''}><span></span></label></article>`).join('')}</div><h2 class="space">Banners</h2><div class="list">${state.data.banners.map(x=>`<article class="list-row"><div class="grow"><b>${esc(x.title)}</b><small>${esc(x.cta_label)} · ${esc(x.target_type)}</small></div><span class="badge">${x.is_active?'ATIVO':'OFF'}</span></article>`).join('')}</div></section>`
-}
-
-function stores(){ return `<section class="panel"><h2>Parceiros</h2><div class="cards">${state.data.stores.map(x=>`<article class="store"><div class="avatar">${esc(x.name).slice(0,2).toUpperCase()}</div><div><b>${esc(x.name)}</b><small>${esc(x.slug)} · ${x.is_open?'aberto':'fechado'}</small></div><span class="badge">${x.is_active?'ATIVO':'OFF'}</span></article>`).join('')}</div></section>` }
-function products(){ return `<section class="panel"><h2>Produtos</h2><table><thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Status</th></tr></thead><tbody>${state.data.products.map(x=>`<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.category)}</td><td>${money(x.price)}</td><td>${x.is_available?'Disponível':'Pausado'}</td></tr>`).join('')}</tbody></table></section>` }
-function orders(){ return `<section class="panel"><h2>Pedidos recentes</h2><table><thead><tr><th>Cliente</th><th>Status</th><th>Total</th><th>Pagamento</th></tr></thead><tbody>${state.data.orders.map(x=>`<tr><td><b>${esc(x.customer_name||'Cliente')}</b><small>${esc(x.customer_phone||'')}</small></td><td><span class="badge">${esc(x.status)}</span></td><td>${money(x.total)}</td><td>${esc(x.payment_method)}</td></tr>`).join('')}</tbody></table></section>` }
-function events(){ return `<section class="panel"><h2>Eventos</h2><p class="muted">Módulo preparado para agenda cultural e turística.</p>${state.data.events.length?state.data.events.map(x=>`<article class="list-row"><div class="grow"><b>${esc(x.title)}</b><small>${esc(x.location)}</small></div></article>`).join(''):'<div class="empty">Nenhum evento cadastrado ainda.</div>'}</section>` }
-function media(){ return `<section class="panel"><h2>Biblioteca de Mídia</h2><p class="muted">Bucket ativo: <b>zecapao-media</b>.</p><div class="drop">▣<br><b>Logos, banners, capas, fotos e vídeos</b><br><small>Storage do Supabase pronto para receber arquivos.</small></div></section>` }
-
-async function bindActions(){
-  document.querySelectorAll('[data-home-active]').forEach(el=>el.onchange=async()=>{await supabase.from('home_sections').update({is_active:el.checked,updated_at:new Date().toISOString()}).eq('id',el.dataset.homeActive);await refresh()})
-  document.querySelectorAll('[data-entry-active]').forEach(el=>el.onchange=async()=>{await supabase.from('app_entry_config').update({is_active:el.checked,updated_at:new Date().toISOString()}).eq('id',el.dataset.entryActive);await refresh()})
-  document.querySelectorAll('[data-save-entry]').forEach(btn=>btn.onclick=async()=>{
-    const id=btn.dataset.saveEntry; const fields=[...document.querySelectorAll(`[data-id="${id}"]`)]; const payload={updated_at:new Date().toISOString()}
-    fields.forEach(f=>payload[f.dataset.field]=f.type==='number'?Number(f.value):f.value)
-    const {error}=await supabase.from('app_entry_config').update(payload).eq('id',id)
-    btn.textContent=error?'Erro ao salvar':'Salvo ✓'; setTimeout(()=>btn.textContent='Salvar alterações',1400)
-  })
-}
-
-async function refresh(){ await loadAll(); render() }
-function render(){
-  if(!state.session || !state.admin) return loginView()
-  const views={dashboard,entry,home,stores,products,orders,events,media}
-  shell((views[state.tab]||dashboard)()); bindActions()
-}
-
-async function boot(session){
-  state.session=session
-  state.admin=await isAdmin(session)
-  if(!state.admin){ if(session) await supabase.auth.signOut(); return loginView('Acesso administrativo necessário.') }
-  await loadAll(); render()
-}
-
-supabase.auth.onAuthStateChange(async(event,session)=>{
-  if(event==='PASSWORD_RECOVERY') return newPasswordView()
-  if(event==='SIGNED_OUT'){ state.session=null; state.admin=false; return loginView() }
-  if(session && event!=='INITIAL_SESSION') await boot(session)
-})
-
-const {data:{session}}=await supabase.auth.getSession()
-if(session) await boot(session); else loginView()
+const supabase = createClient('https://yovjbqtazkreruvxoawf.supabase.co','sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor')
+const state={session:null,admin:false,tab:'dashboard',data:{}}
+const app=document.querySelector('#app')
+const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
+const money=v=>`R$ ${Number(v||0).toFixed(2).replace('.',',')}`
+async function isAdmin(s){if(!s?.user?.id)return false;const{data,error}=await supabase.from('profiles').select('role').eq('id',s.user.id).maybeSingle();return !error&&data?.role==='admin'}
+async function loadAll(){const q=await Promise.all([supabase.from('app_entry_config').select('*').order('sort_order'),supabase.from('home_sections').select('*').order('sort_order'),supabase.from('stores').select('*').order('name'),supabase.from('products').select('*').order('sort_order'),supabase.from('orders').select('*').order('created_at',{ascending:false}).limit(30),supabase.from('events').select('*').order('starts_at',{ascending:true}),supabase.from('campaign_banners').select('*').order('sort_order')]);['entry','home','stores','products','orders','events','banners'].forEach((k,i)=>state.data[k]=q[i].data||[])}
+function loginView(message='',ok=false){app.innerHTML=`<main class="login"><section class="login-card"><div class="brand-mark">ZÉ<br><b>CAPÃO</b></div><p class="eyebrow">ADMIN v0.3</p><h1>O painel que controla o Vale.</h1><p class="muted">Acesso restrito à administração do Zé Capão.</p><form id="loginForm"><label>E-mail<input name="email" type="email" required></label><label>Senha<input name="password" type="password" required></label>${message?`<div class="${ok?'success':'error'}">${esc(message)}</div>`:''}<button>ENTRAR</button><button type="button" id="forgotPassword" class="text-button">Esqueci minha senha</button></form></section></main>`;document.querySelector('#forgotPassword').onclick=()=>forgotView();document.querySelector('#loginForm').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),{data,error}=await supabase.auth.signInWithPassword({email:fd.get('email'),password:fd.get('password')});if(error)return loginView('E-mail ou senha inválidos.');if(!(await isAdmin(data.session))){await supabase.auth.signOut();return loginView('Esta conta não possui permissão administrativa.')}await boot(data.session)}}
+function forgotView(message='',ok=false){app.innerHTML=`<main class="login"><section class="login-card"><div class="brand-mark">ZÉ<br><b>CAPÃO</b></div><p class="eyebrow">RECUPERAÇÃO</p><h1>Recuperar senha</h1><form id="forgotForm"><label>E-mail<input name="email" type="email" required value="carlosright@gmail.com"></label>${message?`<div class="${ok?'success':'error'}">${esc(message)}</div>`:''}<button>ENVIAR LINK</button><button type="button" id="backLogin" class="text-button">Voltar</button></form></section></main>`;document.querySelector('#backLogin').onclick=()=>loginView();document.querySelector('#forgotForm').onsubmit=async e=>{e.preventDefault();const email=new FormData(e.currentTarget).get('email'),{error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:'https://zecapao-admin.vercel.app/'});forgotView(error?error.message:'Link enviado.',!error)}}
+function newPasswordView(){loginView('Use o link de recuperação para definir a nova senha.',true)}
+const menu=[['dashboard','Dashboard','◫'],['entry','Tela de Entrada','◉'],['home','Home','⌂'],['stores','Parceiros','◆'],['products','Produtos','▦'],['orders','Pedidos','≡'],['events','Eventos','★'],['media','Mídias','▣']]
+function shell(content){app.innerHTML=`<div class="layout"><aside><div class="logo">Zé Capão <span>ADMIN</span></div><nav>${menu.map(([id,l,i])=>`<button data-tab="${id}" class="${state.tab===id?'active':''}"><i>${i}</i>${l}</button>`).join('')}</nav><button id="logout" class="logout">Sair</button></aside><main><header><div><p class="eyebrow">ZÉ CAPÃO ADMIN</p><h1>${menu.find(x=>x[0]===state.tab)?.[1]||''}</h1></div><div class="status">● online</div></header>${content}</main></div>`;document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{state.tab=b.dataset.tab;render()});document.querySelector('#logout').onclick=()=>supabase.auth.signOut()}
+function dashboard(){const d=state.data;return `<section class="grid stats"><article><span>Parceiros</span><b>${d.stores.length}</b></article><article><span>Produtos</span><b>${d.products.length}</b></article><article><span>Pedidos recentes</span><b>${d.orders.length}</b></article><article><span>Eventos</span><b>${d.events.length}</b></article></section><section class="panel"><h2>Central editorial</h2><p class="muted">Conteúdo dinâmico do aplicativo.</p></section>`}
+function entry(){return `<section class="panel"><h2>Tela de Entrada</h2><p class="muted">Mídia de abertura recomendada: <b>1080 × 1920 px</b> (9:16) · JPG/PNG/WebP.</p></section>`}
+function bannerCard(x){const img=x.image_url||x.media_url||x.banner_url||'';return `<article class="editor-card banner-editor"><div class="row"><div><b>${esc(x.title||'Banner')}</b><small>Banner Home · recomendado 1200 × 600 px · proporção 2:1 · JPG/PNG/WebP</small></div><label class="switch"><input type="checkbox" data-banner-field="is_active" data-id="${x.id}" ${x.is_active?'checked':''}><span></span></label></div><div class="banner-workspace"><div class="banner-preview">${img?`<img src="${esc(img)}" alt="Prévia">`:`<div class="preview-empty"><b>PRÉVIA 2:1</b><small>1200 × 600 px</small></div>`}</div><div class="form-grid"><label>Título<input data-banner-field="title" data-id="${x.id}" value="${esc(x.title)}"></label><label>Subtítulo<input data-banner-field="subtitle" data-id="${x.id}" value="${esc(x.subtitle||'')}"></label><label>Texto do botão<input data-banner-field="cta_label" data-id="${x.id}" value="${esc(x.cta_label||'')}"></label><label>Tipo de destino<input data-banner-field="target_type" data-id="${x.id}" value="${esc(x.target_type||'')}"></label><label class="wide">URL / imagem <span class="field-help">1200 × 600 px recomendado</span><input data-banner-field="image_url" data-id="${x.id}" value="${esc(img)}" placeholder="https://..."></label><label>Destino / ID<input data-banner-field="target_id" data-id="${x.id}" value="${esc(x.target_id||x.target_value||'')}"></label><label>Ordem<input type="number" data-banner-field="sort_order" data-id="${x.id}" value="${Number(x.sort_order||0)}"></label></div></div><div class="row banner-actions"><small class="muted">A peça será exibida em recorte 2:1. Mantenha textos importantes longe das bordas.</small><button class="save" data-save-banner="${x.id}">Salvar banner</button></div></article>`}
+function home(){return `<section class="panel"><div class="panel-head"><div><h2>Seções da Home</h2><p class="muted">Ordem e visibilidade do app.</p></div></div><div class="list">${state.data.home.map(x=>`<article class="list-row"><div class="order">${x.sort_order}</div><div class="grow"><b>${esc(x.title)}</b><small>${esc(x.section_type)}</small></div><label class="switch"><input type="checkbox" data-home-active="${x.id}" ${x.is_active?'checked':''}><span></span></label></article>`).join('')}</div><div class="panel-head space"><div><h2>Banners da Home</h2><p class="muted"><b>Formato recomendado: 1200 × 600 px</b> · proporção 2:1 · JPG, PNG ou WebP. O preview abaixo simula o recorte do app.</p></div></div>${state.data.banners.map(bannerCard).join('')}</section>`}
+function stores(){return `<section class="panel"><h2>Parceiros</h2><p class="muted">Logo recomendada: <b>800 × 800 px</b> · 1:1. Capa: <b>1200 × 675 px</b> · 16:9.</p></section>`}function products(){return `<section class="panel"><h2>Produtos</h2><p class="muted">Foto recomendada: <b>1000 × 1000 px</b> · 1:1.</p></section>`}function orders(){return `<section class="panel"><h2>Pedidos recentes</h2></section>`}function events(){return `<section class="panel"><h2>Eventos</h2><p class="muted">Capa recomendada: <b>1200 × 675 px</b> · 16:9.</p></section>`}function media(){return `<section class="panel"><h2>Biblioteca de Mídia</h2><p class="muted">Bucket: <b>zecapao-media</b>.</p></section>`}
+async function bindActions(){document.querySelectorAll('[data-home-active]').forEach(el=>el.onchange=async()=>{await supabase.from('home_sections').update({is_active:el.checked,updated_at:new Date().toISOString()}).eq('id',el.dataset.homeActive);await refresh()});document.querySelectorAll('[data-save-banner]').forEach(btn=>btn.onclick=async()=>{const id=btn.dataset.saveBanner,els=[...document.querySelectorAll(`[data-banner-field][data-id="${id}"]`)],payload={updated_at:new Date().toISOString()};els.forEach(f=>{let v=f.type==='checkbox'?f.checked:f.type==='number'?Number(f.value):f.value;if(f.dataset.bannerField==='image_url'&&!('image_url' in (state.data.banners.find(x=>String(x.id)===String(id))||{})))return;payload[f.dataset.bannerField]=v});const{error}=await supabase.from('campaign_banners').update(payload).eq('id',id);btn.textContent=error?'Erro ao salvar':'Salvo ✓';if(!error)setTimeout(refresh,700)})}
+async function refresh(){await loadAll();render()}function render(){if(!state.session||!state.admin)return loginView();const views={dashboard,entry,home,stores,products,orders,events,media};shell((views[state.tab]||dashboard)());bindActions()}async function boot(s){state.session=s;state.admin=await isAdmin(s);if(!state.admin){if(s)await supabase.auth.signOut();return loginView('Acesso administrativo necessário.')}await loadAll();render()}
+supabase.auth.onAuthStateChange(async(event,session)=>{if(event==='PASSWORD_RECOVERY')return newPasswordView();if(event==='SIGNED_OUT'){state.session=null;state.admin=false;return loginView()}if(session&&event!=='INITIAL_SESSION')await boot(session)});const{data:{session}}=await supabase.auth.getSession();if(session)await boot(session);else loginView()
