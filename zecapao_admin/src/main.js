@@ -6,11 +6,17 @@ const supabase = createClient(
   'sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor'
 )
 
-const state = { session:null, tab:'dashboard', data:{} }
+const state = { session:null, admin:false, tab:'dashboard', data:{} }
 const app = document.querySelector('#app')
 
 const esc = (v='') => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 const money = v => `R$ ${Number(v||0).toFixed(2).replace('.',',')}`
+
+async function isAdmin(session){
+  if(!session?.user?.id) return false
+  const {data,error}=await supabase.from('profiles').select('role').eq('id',session.user.id).maybeSingle()
+  return !error && data?.role==='admin'
+}
 
 async function loadAll(){
   const queries = await Promise.all([
@@ -26,18 +32,57 @@ async function loadAll(){
   queries.forEach((r,i)=> state.data[keys[i]]=r.data||[])
 }
 
-function loginView(message=''){
+function loginView(message='',ok=false){
   app.innerHTML = `<main class="login"><section class="login-card">
     <div class="brand-mark">ZÉ<br><b>CAPÃO</b></div>
-    <p class="eyebrow">ADMIN v0.1</p><h1>O painel que controla o Vale.</h1>
-    <p class="muted">Entre com uma conta administrativa do Supabase.</p>
-    <form id="loginForm"><label>E-mail<input name="email" type="email" required></label><label>Senha<input name="password" type="password" required></label>
-    ${message?`<div class="error">${esc(message)}</div>`:''}<button>ENTRAR</button></form>
+    <p class="eyebrow">ADMIN v0.2</p><h1>O painel que controla o Vale.</h1>
+    <p class="muted">Acesso restrito à administração do Zé Capão.</p>
+    <form id="loginForm"><label>E-mail<input name="email" type="email" required autocomplete="username"></label><label>Senha<input name="password" type="password" required autocomplete="current-password"></label>
+    ${message?`<div class="${ok?'success':'error'}">${esc(message)}</div>`:''}<button>ENTRAR</button>
+    <button type="button" id="forgotPassword" class="text-button">Esqueci minha senha</button></form>
   </section></main>`
+  document.querySelector('#forgotPassword').onclick=()=>forgotView()
   document.querySelector('#loginForm').onsubmit = async e => {
     e.preventDefault(); const fd=new FormData(e.currentTarget)
-    const {error}=await supabase.auth.signInWithPassword({email:fd.get('email'),password:fd.get('password')})
-    if(error) loginView(error.message)
+    const {data,error}=await supabase.auth.signInWithPassword({email:fd.get('email'),password:fd.get('password')})
+    if(error) return loginView('E-mail ou senha inválidos.')
+    if(!(await isAdmin(data.session))){ await supabase.auth.signOut(); return loginView('Esta conta não possui permissão administrativa.') }
+    await boot(data.session)
+  }
+}
+
+function forgotView(message='',ok=false){
+  app.innerHTML=`<main class="login"><section class="login-card">
+    <div class="brand-mark">ZÉ<br><b>CAPÃO</b></div>
+    <p class="eyebrow">RECUPERAÇÃO</p><h1>Recuperar senha</h1>
+    <p class="muted">Informe o e-mail da sua conta administrativa.</p>
+    <form id="forgotForm"><label>E-mail<input name="email" type="email" required autocomplete="email" value="carlosright@gmail.com"></label>
+    ${message?`<div class="${ok?'success':'error'}">${esc(message)}</div>`:''}<button>ENVIAR LINK</button>
+    <button type="button" id="backLogin" class="text-button">Voltar ao login</button></form>
+  </section></main>`
+  document.querySelector('#backLogin').onclick=()=>loginView()
+  document.querySelector('#forgotForm').onsubmit=async e=>{
+    e.preventDefault(); const email=new FormData(e.currentTarget).get('email')
+    const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:'https://zecapao-admin.vercel.app/'})
+    if(error) return forgotView(error.message)
+    forgotView('Link enviado. Abra seu e-mail e clique na recuperação de senha.',true)
+  }
+}
+
+function newPasswordView(message=''){
+  app.innerHTML=`<main class="login"><section class="login-card">
+    <div class="brand-mark">ZÉ<br><b>CAPÃO</b></div>
+    <p class="eyebrow">NOVA SENHA</p><h1>Crie uma nova senha</h1>
+    <p class="muted">Escolha uma senha com pelo menos 8 caracteres.</p>
+    <form id="passwordForm"><label>Nova senha<input name="password" type="password" minlength="8" required autocomplete="new-password"></label><label>Confirmar senha<input name="confirm" type="password" minlength="8" required autocomplete="new-password"></label>
+    ${message?`<div class="error">${esc(message)}</div>`:''}<button>SALVAR NOVA SENHA</button></form>
+  </section></main>`
+  document.querySelector('#passwordForm').onsubmit=async e=>{
+    e.preventDefault(); const fd=new FormData(e.currentTarget)
+    if(fd.get('password')!==fd.get('confirm')) return newPasswordView('As senhas não coincidem.')
+    const {error}=await supabase.auth.updateUser({password:fd.get('password')})
+    if(error) return newPasswordView(error.message)
+    await supabase.auth.signOut(); loginView('Senha alterada com sucesso. Entre com a nova senha.',true)
   }
 }
 
@@ -53,9 +98,7 @@ function shell(content){
 
 function dashboard(){
   const d=state.data
-  return `<section class="grid stats">
-    <article><span>Parceiros</span><b>${d.stores.length}</b></article><article><span>Produtos</span><b>${d.products.length}</b></article><article><span>Pedidos recentes</span><b>${d.orders.length}</b></article><article><span>Eventos</span><b>${d.events.length}</b></article>
-  </section><section class="panel"><h2>Central editorial</h2><p class="muted">A partir daqui, o conteúdo do app deixa de depender de uma nova APK. O Admin passa a comandar entrada, Home, parceiros, produtos e campanhas.</p></section>`
+  return `<section class="grid stats"><article><span>Parceiros</span><b>${d.stores.length}</b></article><article><span>Produtos</span><b>${d.products.length}</b></article><article><span>Pedidos recentes</span><b>${d.orders.length}</b></article><article><span>Eventos</span><b>${d.events.length}</b></article></section><section class="panel"><h2>Central editorial</h2><p class="muted">A partir daqui, o conteúdo do app deixa de depender de uma nova APK. O Admin passa a comandar entrada, Home, parceiros, produtos e campanhas.</p></section>`
 }
 
 function entry(){
@@ -70,8 +113,8 @@ function home(){
 function stores(){ return `<section class="panel"><h2>Parceiros</h2><div class="cards">${state.data.stores.map(x=>`<article class="store"><div class="avatar">${esc(x.name).slice(0,2).toUpperCase()}</div><div><b>${esc(x.name)}</b><small>${esc(x.slug)} · ${x.is_open?'aberto':'fechado'}</small></div><span class="badge">${x.is_active?'ATIVO':'OFF'}</span></article>`).join('')}</div></section>` }
 function products(){ return `<section class="panel"><h2>Produtos</h2><table><thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Status</th></tr></thead><tbody>${state.data.products.map(x=>`<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.category)}</td><td>${money(x.price)}</td><td>${x.is_available?'Disponível':'Pausado'}</td></tr>`).join('')}</tbody></table></section>` }
 function orders(){ return `<section class="panel"><h2>Pedidos recentes</h2><table><thead><tr><th>Cliente</th><th>Status</th><th>Total</th><th>Pagamento</th></tr></thead><tbody>${state.data.orders.map(x=>`<tr><td><b>${esc(x.customer_name||'Cliente')}</b><small>${esc(x.customer_phone||'')}</small></td><td><span class="badge">${esc(x.status)}</span></td><td>${money(x.total)}</td><td>${esc(x.payment_method)}</td></tr>`).join('')}</tbody></table></section>` }
-function events(){ return `<section class="panel"><h2>Eventos</h2><p class="muted">O módulo já está pronto no banco para receber Capão Reggae Vale, Jazz e próximos eventos.</p>${state.data.events.length?state.data.events.map(x=>`<article class="list-row"><div class="grow"><b>${esc(x.title)}</b><small>${esc(x.location)}</small></div></article>`).join(''):'<div class="empty">Nenhum evento cadastrado ainda.</div>'}</section>` }
-function media(){ return `<section class="panel"><h2>Biblioteca de Mídia</h2><p class="muted">Bucket ativo: <b>zecapao-media</b>. Upload visual entra na próxima iteração do painel.</p><div class="drop">▣<br><b>Logos, banners, capas, fotos e vídeos</b><br><small>Storage do Supabase pronto para receber arquivos.</small></div></section>` }
+function events(){ return `<section class="panel"><h2>Eventos</h2><p class="muted">Módulo preparado para agenda cultural e turística.</p>${state.data.events.length?state.data.events.map(x=>`<article class="list-row"><div class="grow"><b>${esc(x.title)}</b><small>${esc(x.location)}</small></div></article>`).join(''):'<div class="empty">Nenhum evento cadastrado ainda.</div>'}</section>` }
+function media(){ return `<section class="panel"><h2>Biblioteca de Mídia</h2><p class="muted">Bucket ativo: <b>zecapao-media</b>.</p><div class="drop">▣<br><b>Logos, banners, capas, fotos e vídeos</b><br><small>Storage do Supabase pronto para receber arquivos.</small></div></section>` }
 
 async function bindActions(){
   document.querySelectorAll('[data-home-active]').forEach(el=>el.onchange=async()=>{await supabase.from('home_sections').update({is_active:el.checked,updated_at:new Date().toISOString()}).eq('id',el.dataset.homeActive);await refresh()})
@@ -86,10 +129,23 @@ async function bindActions(){
 
 async function refresh(){ await loadAll(); render() }
 function render(){
-  if(!state.session) return loginView()
+  if(!state.session || !state.admin) return loginView()
   const views={dashboard,entry,home,stores,products,orders,events,media}
   shell((views[state.tab]||dashboard)()); bindActions()
 }
 
-supabase.auth.onAuthStateChange(async(_,session)=>{state.session=session;if(session)await loadAll();render()})
-const {data:{session}}=await supabase.auth.getSession();state.session=session;if(session)await loadAll();render()
+async function boot(session){
+  state.session=session
+  state.admin=await isAdmin(session)
+  if(!state.admin){ if(session) await supabase.auth.signOut(); return loginView('Acesso administrativo necessário.') }
+  await loadAll(); render()
+}
+
+supabase.auth.onAuthStateChange(async(event,session)=>{
+  if(event==='PASSWORD_RECOVERY') return newPasswordView()
+  if(event==='SIGNED_OUT'){ state.session=null; state.admin=false; return loginView() }
+  if(session && event!=='INITIAL_SESSION') await boot(session)
+})
+
+const {data:{session}}=await supabase.auth.getSession()
+if(session) await boot(session); else loginView()
