@@ -9,6 +9,7 @@ on:
       - 'zecapao_beta/lib/main_catalog.dart'
       - 'zecapao_beta/pubspec.yaml'
       - 'zecapao_beta/Ativos/Marca/**'
+      - 'zecapao_beta/tool/dynamic_media_patch.py'
       - '.github/workflows/zecapao-catalog-apk.yml'
 
 jobs:
@@ -151,6 +152,13 @@ jobs:
           PY
           dart format lib/catalog/showcase_home.dart lib/catalog/hospedagens_page.dart lib/catalog/showcase_shell.dart
 
+      - name: Apply dynamic media circuit
+        working-directory: zecapao_beta
+        shell: bash
+        run: |
+          python3 tool/dynamic_media_patch.py
+          dart format lib/catalog/core.dart lib/catalog/showcase_home.dart lib/catalog/merchant_store_v2.dart
+
       - name: Validate navigation contract
         working-directory: zecapao_beta
         run: |
@@ -159,7 +167,10 @@ jobs:
           grep -q "tab = 3" lib/catalog/showcase_home.dart
           ! grep -q "POUSADA DEMO" lib/catalog/showcase_shell.dart
           grep -q "FAZER RESERVA" lib/catalog/pousada_demo.dart
-          echo 'Contrato minimo de navegacao validado.'
+          grep -q "repo.categories()" lib/catalog/showcase_home.dart
+          grep -q "repo.events()" lib/catalog/showcase_home.dart
+          grep -q "repo.banners()" lib/catalog/showcase_home.dart
+          echo 'Contrato minimo de navegacao e midia dinamica validado.'
 
       - name: Analyze catalog
         working-directory: zecapao_beta
@@ -172,6 +183,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-mvp-0.2.6-premium-navigation-apk
+          name: zecapao-mvp-0.2.7-dynamic-media-apk
           path: zecapao_beta/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
