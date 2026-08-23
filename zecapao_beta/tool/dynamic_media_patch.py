@@ -84,3 +84,5 @@ s,n=re.subn(r"  Widget _events\(\) \{.*?\n  \}\n\n  Widget _eventCard",events,s,
 if n!=1: raise SystemExit('events block not found')
 home.write_text(s)
 print('Dynamic media patch applied')
+
+# Build trigger: Zecapao MVP 0.2.7 dynamic media circuit
