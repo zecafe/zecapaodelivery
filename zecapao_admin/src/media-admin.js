@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import './media-admin.css'
 
 const sb=createClient('https://yovjbqtazkreruvxoawf.supabase.co','sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor')
 const bucket='zecapao-media'
