@@ -15,7 +15,7 @@ class CategoryTaxonomy {
   final Set<String> primaryStoreIds;
   final Map<String,Set<String>> storeSubcategoryIds;
   const CategoryTaxonomy({required this.categoryId,required this.subcategories,required this.primaryStoreIds,required this.storeSubcategoryIds});
-  static const empty=CategoryTaxonomy(categoryId:null,subcategories:[],primaryStoreIds:{},storeSubcategoryIds:{});
+  static const empty=CategoryTaxonomy(categoryId:null,subcategories:<CatalogSubcategory>[],primaryStoreIds:<String>{},storeSubcategoryIds:<String,Set<String>>{});
 }
 
 String categorySlugForLabel(String label){
