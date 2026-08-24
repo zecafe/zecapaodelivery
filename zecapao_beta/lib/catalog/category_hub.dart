@@ -1,82 +1,96 @@
 import 'package:flutter/material.dart';
 import 'core.dart';
+import 'branded_store.dart';
+import 'taxonomy.dart';
 
-class CategoryHub extends StatefulWidget {
-  const CategoryHub({super.key, required this.repo, required this.taxonomy, required this.initialCategoryId});
+class CategoryHubPage extends StatefulWidget {
+  final String category;
+  final String customerName;
+  final String phone;
   final Repo repo;
-  final CategoryTaxonomy taxonomy;
-  final String initialCategoryId;
-
-  @override
-  State<CategoryHub> createState() => _CategoryHubState();
+  const CategoryHubPage({super.key,required this.category,required this.customerName,required this.phone,required this.repo});
+  @override State<CategoryHubPage> createState()=>_CategoryHubPageState();
 }
 
-class _CategoryHubState extends State<CategoryHub> {
-  late String categoryId;
-  String subId='all';
-  bool loading=true;
-  List<_StoreMatch> stores=[];
+class _CategoryHubPageState extends State<CategoryHubPage>{
+  late Future<_HubData> future;
+  String? selectedSubId;
+  final search=TextEditingController();
+  bool onlyOpen=false;
 
-  @override
-  void initState(){super.initState();categoryId=widget.initialCategoryId;_load();}
+  @override void initState(){super.initState();future=_load();}
+  @override void dispose(){search.dispose();super.dispose();}
 
-  Future<void> _load() async {
-    setState(()=>loading=true);
-    final allStores=await widget.repo.stores();
-    final matches=< _StoreMatch>[];
-    for(final s in allStores){
-      final products=await widget.repo.productsFor(s.id);
-      final hay='${s.name} ${s.description} ${products.map((e)=>'${e.name} ${e.description} ${e.category}').join(' ')}'.toLowerCase();
-      final subs=<String>{};
-      for(final c in widget.taxonomy.categories){
-        for(final sub in c.subcategories){
-          if(sub.keywords.any((k)=>hay.contains(k.toLowerCase()))) subs.add(sub.id);
-        }
+  Future<_HubData> _load() async {
+    final taxonomy=await loadCategoryTaxonomy(widget.category);
+    final stores=await widget.repo.stores();
+    final out=<_StoreMatch>[];
+    for(final store in stores){
+      List<Product> products=const[];
+      try{products=await widget.repo.products(store.id);}catch(_){}
+      final haystack='${store.name} ${store.slug} ${store.description} ${products.map((p)=>'${p.name} ${p.category}').join(' ')}'.toLowerCase();
+      final explicit=taxonomy.primaryStoreIds.contains(store.id)||taxonomy.storeSubcategoryIds.containsKey(store.id);
+      if(explicit||_legacyBelongs(haystack)){
+        out.add(_StoreMatch(store:store,products:products,haystack:haystack,subIds:taxonomy.storeSubcategoryIds[store.id]??const{}));
       }
-      matches.add(_StoreMatch(store:s,products:products,haystack:hay,subIds:subs));
     }
-    if(mounted)setState((){stores=matches;loading=false;});
+    return _HubData(taxonomy:taxonomy,stores:out);
   }
 
-  Future<void> _open(Store s) async {
-    await Navigator.of(context).push(MaterialPageRoute(builder:(_)=>StorePage(repo:widget.repo,store:s)));
+  bool _legacyBelongs(String h){
+    final c=widget.category.toLowerCase();
+    bool has(List<String> terms)=>terms.any(h.contains);
+    if(c=='comida')return has(['pizza','burger','hamb','aça','acai','restaurante','comida','cozinha','doce','lanche']);
+    if(c=='café')return has(['café','cafe','espresso','cappuccino','coffee','brunch']);
+    if(c=='pizza')return has(['pizza','pizzaria']);
+    if(c=='mercado')return has(['mercado','mercearia','orgânico','organico','conveniência','conveniencia']);
+    if(c=='hospedagem'||c=='hospedagens')return has(['pousada','hotel','hostel','hosped','camping','chalé','chale']);
+    if(c=='experiências')return has(['trilha','guia','passeio','experiência','experiencia','turismo','aventura','massagem','yoga']);
+    if(c=='eventos')return has(['evento','festival','música','musica','show','cultura']);
+    if(c=='serviços'||c=='servicos')return has(['serviço','servico','turismo','transporte','massagem','manutenção','manutencao']);
+    return false;
   }
 
-  Widget _categoryChip(CategoryDefinition c){
-    final active=c.id==categoryId;
-    return InkWell(onTap:(){setState((){categoryId=c.id;subId='all';});},borderRadius:BorderRadius.circular(16),child:Container(width:78,padding:const EdgeInsets.symmetric(vertical:9,horizontal:6),decoration:BoxDecoration(color:active?brandInk:const Color(0xFFF4F0E8),borderRadius:BorderRadius.circular(16),border:Border.all(color:active?brandInk:const Color(0xFFE8E1D6))),child:Column(children:[Icon(c.icon,size:22,color:active?Colors.white:c.color),const SizedBox(height:5),Text(c.label,textAlign:TextAlign.center,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:9,fontWeight:FontWeight.w800,color:active?Colors.white:brandInk))])));
-  }
-
-  Widget _subChip(String id,String label){
-    final active=id==subId;
-    return ChoiceChip(label:Text(label),selected:active,onSelected:(_)=>setState(()=>subId=id),showCheckmark:false,selectedColor:brandRed,labelStyle:TextStyle(color:active?Colors.white:brandInk,fontSize:10,fontWeight:FontWeight.w800),side:BorderSide.none,backgroundColor:const Color(0xFFF2EEE6));
-  }
-
-  List<_StoreMatch> _visible(){
-    final cat=widget.taxonomy.categories.firstWhere((c)=>c.id==categoryId,orElse:()=>widget.taxonomy.categories.first);
-    final keys=cat.keywords.map((e)=>e.toLowerCase()).toList();
-    return stores.where((m){
-      final categoryOk=keys.isEmpty||keys.any(m.haystack.contains)||m.store.categoryId==cat.id;
-      final subOk=subId=='all'||m.subIds.contains(subId);
-      return categoryOk&&subOk;
+  List<_StoreMatch> _filtered(_HubData data){
+    var list=data.stores.where((m){
+      if(selectedSubId!=null&&m.subIds.isNotEmpty&&!m.subIds.contains(selectedSubId))return false;
+      final q=search.text.trim().toLowerCase();
+      if(q.isNotEmpty&&!m.haystack.contains(q))return false;
+      if(onlyOpen&&!m.store.isOpen)return false;
+      return true;
     }).toList();
+    return list;
   }
 
-  @override
-  Widget build(BuildContext context){
-    final cat=widget.taxonomy.categories.firstWhere((c)=>c.id==categoryId,orElse:()=>widget.taxonomy.categories.first);
-    final items=_visible();
-    return Scaffold(backgroundColor:Colors.white,appBar:AppBar(backgroundColor:Colors.white,elevation:0,foregroundColor:brandInk,title:Text(cat.label,style:const TextStyle(fontWeight:FontWeight.w900))),body:RefreshIndicator(onRefresh:_load,child:ListView(padding:const EdgeInsets.fromLTRB(18,10,18,30),children:[
-      SizedBox(height:82,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:widget.taxonomy.categories.length,separatorBuilder:(_,__)=>const SizedBox(width:8),itemBuilder:(_,i)=>_categoryChip(widget.taxonomy.categories[i]))),
-      const SizedBox(height:17),
-      SingleChildScrollView(scrollDirection:Axis.horizontal,child:Row(children:[_subChip('all','Tudo'),const SizedBox(width:7),...cat.subcategories.expand((s)=>[_subChip(s.id,s.label),const SizedBox(width:7)])])),
-      const SizedBox(height:18),
-      Text('${items.length} parceiros',style:const TextStyle(fontSize:12,color:brandMuted,fontWeight:FontWeight.w800)),
-      const SizedBox(height:11),
-      if(loading)const Padding(padding:EdgeInsets.all(30),child:Center(child:CircularProgressIndicator(color:brandRed)))
-      else if(items.isEmpty)Container(padding:const EdgeInsets.all(28),decoration:BoxDecoration(color:const Color(0xFFF8F5EF),borderRadius:BorderRadius.circular(22)),child:const Column(children:[Icon(Icons.storefront_outlined,size:42,color:brandMuted),SizedBox(height:8),Text('Nenhum parceiro cadastrado nesta seleção.',style:TextStyle(color:brandMuted,fontWeight:FontWeight.w700))]))
-      else ...items.map(_partnerCard),
-    ])));
+  Color get accent{switch(widget.category.toLowerCase()){
+    case 'comida':return const Color(0xFFFF6A3D);case 'café':return const Color(0xFF8B5E3C);case 'pizza':return const Color(0xFFE8452C);case 'mercado':return const Color(0xFF2F9A62);case 'hospedagem':return const Color(0xFF5677C7);case 'experiências':return const Color(0xFF27866D);case 'eventos':return const Color(0xFFC84671);case 'serviços':return const Color(0xFF6553B8);default:return brandRed;}}
+
+  IconData _icon(String key){switch(key){
+    case 'bakery_dining':return Icons.bakery_dining_rounded;case 'lunch_dining':return Icons.lunch_dining_rounded;case 'restaurant':return Icons.restaurant_rounded;case 'cake':return Icons.cake_rounded;case 'eco':return Icons.eco_rounded;case 'coffee':return Icons.coffee_rounded;case 'brunch_dining':return Icons.brunch_dining_rounded;case 'local_pizza':return Icons.local_pizza_rounded;case 'shopping_basket':return Icons.shopping_basket_rounded;case 'local_drink':return Icons.local_drink_rounded;case 'hotel':return Icons.hotel_rounded;case 'bed':return Icons.bed_rounded;case 'house':return Icons.house_rounded;case 'hiking':return Icons.hiking_rounded;case 'explore':return Icons.explore_rounded;case 'tour':return Icons.tour_rounded;case 'music_note':return Icons.music_note_rounded;case 'theater_comedy':return Icons.theater_comedy_rounded;case 'sports':return Icons.sports_rounded;case 'directions_car':return Icons.directions_car_rounded;case 'spa':return Icons.spa_rounded;case 'handyman':return Icons.handyman_rounded;default:return Icons.grid_view_rounded;}}
+
+  Future<void> _open(Store store)async{if(!store.isOpen)return;await Navigator.push(context,MaterialPageRoute(builder:(_)=>BrandedStorePage(store:store,customerName:widget.customerName,phone:widget.phone,repo:widget.repo)));}
+
+  @override Widget build(BuildContext context){
+    return Scaffold(backgroundColor:Colors.white,body:SafeArea(child:FutureBuilder<_HubData>(future:future,builder:(_,snap){
+      final data=snap.data;
+      final items=data==null?< _StoreMatch>[]:_filtered(data);
+      final subs=data?.taxonomy.subcategories??const<CatalogSubcategory>[];
+      return RefreshIndicator(onRefresh:()async=>setState(()=>future=_load()),child:ListView(padding:const EdgeInsets.fromLTRB(18,12,18,34),children:[
+        Row(children:[IconButton.filledTonal(onPressed:()=>Navigator.pop(context),icon:const Icon(Icons.arrow_back_rounded)),Expanded(child:Text(widget.category,textAlign:TextAlign.center,style:const TextStyle(fontSize:22,fontWeight:FontWeight.w900))),IconButton.filledTonal(onPressed:(){},icon:const Icon(Icons.menu_rounded))]),
+        const SizedBox(height:20),
+        TextField(controller:search,onChanged:(_)=>setState((){}),decoration:InputDecoration(hintText:'Buscar em ${widget.category}',prefixIcon:const Icon(Icons.search_rounded),filled:true,fillColor:const Color(0xFFF5F5F5),border:OutlineInputBorder(borderRadius:BorderRadius.circular(24),borderSide:BorderSide.none))),
+        const SizedBox(height:22),
+        if(subs.isNotEmpty)...[
+          SizedBox(height:112,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:subs.length,separatorBuilder:(_,__)=>const SizedBox(width:12),itemBuilder:(_,i){final s=subs[i],active=s.id==selectedSubId;return InkWell(onTap:()=>setState(()=>selectedSubId=active?null:s.id),borderRadius:BorderRadius.circular(20),child:SizedBox(width:82,child:Column(children:[Container(width:76,height:76,decoration:BoxDecoration(color:active?accent.withValues(alpha:.18):const Color(0xFFF5F3EF),borderRadius:BorderRadius.circular(19),border:Border.all(color:active?accent:Colors.transparent,width:1.5)),child:s.imageUrl.isNotEmpty?ClipRRect(borderRadius:BorderRadius.circular(18),child:Image.network(s.imageUrl,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Icon(_icon(s.icon),size:38,color:accent))):Icon(_icon(s.icon),size:38,color:accent)),const SizedBox(height:7),Text(s.name,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(fontSize:10.5,fontWeight:active?FontWeight.w900:FontWeight.w700,color:brandInk))])));})) ,
+          const SizedBox(height:8),
+        ],
+        Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[const Text('Parceiros',style:TextStyle(fontSize:23,fontWeight:FontWeight.w900)),FilterChip(label:const Text('Abertos'),selected:onlyOpen,onSelected:(v)=>setState(()=>onlyOpen=v))]),
+        const SizedBox(height:12),
+        if(snap.connectionState==ConnectionState.waiting)const Padding(padding:EdgeInsets.all(50),child:Center(child:CircularProgressIndicator()))
+        else if(items.isEmpty)Container(padding:const EdgeInsets.all(28),decoration:BoxDecoration(color:const Color(0xFFF8F5EF),borderRadius:BorderRadius.circular(22)),child:const Column(children:[Icon(Icons.storefront_outlined,size:42,color:brandMuted),SizedBox(height:8),Text('Nenhum parceiro cadastrado nesta seleção.',style:TextStyle(color:brandMuted,fontWeight:FontWeight.w700))]))
+        else ...items.map(_partnerCard),
+      ]));
+    })));
   }
 
   Widget _partnerCard(_StoreMatch m){final s=m.store;return Padding(padding:const EdgeInsets.only(bottom:14),child:InkWell(onTap:s.isOpen?()=>_open(s):null,borderRadius:BorderRadius.circular(22),child:Row(crossAxisAlignment:CrossAxisAlignment.center,children:[
