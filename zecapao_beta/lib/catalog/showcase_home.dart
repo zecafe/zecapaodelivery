@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'core.dart';
 import 'branded_store.dart';
+import 'category_hub.dart';
 
 class ShowcaseHomePage extends StatefulWidget {
   final String customerName;
@@ -25,6 +26,15 @@ class _ShowcaseHomePageState extends State<ShowcaseHomePage> {
   Future<void> openStore(Store store) async {
     if (!store.isOpen) return;
     await Navigator.push(context, MaterialPageRoute(builder: (_) => BrandedStorePage(store: store, customerName: widget.customerName, phone: widget.phone, repo: repo)));
+  }
+
+  Future<void> openCategory(String category) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => CategoryHubPage(
+      category: category,
+      customerName: widget.customerName,
+      phone: widget.phone,
+      repo: repo,
+    )));
   }
 
   @override
@@ -79,7 +89,7 @@ class _ShowcaseHomePageState extends State<ShowcaseHomePage> {
           const SizedBox(height: 11),
           _partnerRail(stores),
           const SizedBox(height: 26),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('O Vale acontece', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)), TextButton(onPressed: () {}, child: const Text('Ver agenda'))]),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('O Vale acontece', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)), TextButton(onPressed: () => openCategory('Eventos'), child: const Text('Ver agenda'))]),
           const Text('Música, cultura e experiências que movimentam o Capão.', style: TextStyle(color: brandMuted, fontSize: 11.5)),
           const SizedBox(height: 12),
           _events(),
@@ -95,14 +105,14 @@ class _ShowcaseHomePageState extends State<ShowcaseHomePage> {
           const Text('Mais do que delivery', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
           const SizedBox(height: 12),
           Row(children: [
-            Expanded(child: _miniExplore('Hospedagens', Icons.hotel_rounded, const Color(0xFFE6EEFF))),
+            Expanded(child: InkWell(onTap: () => openCategory('Hospedagem'), borderRadius: BorderRadius.circular(21), child: _miniExplore('Hospedagens', Icons.hotel_rounded, const Color(0xFFE6EEFF)))),
             const SizedBox(width: 10),
-            Expanded(child: _miniExplore('Experiências', Icons.hiking_rounded, const Color(0xFFE1F5EE))),
+            Expanded(child: InkWell(onTap: () => openCategory('Experiências'), borderRadius: BorderRadius.circular(21), child: _miniExplore('Experiências', Icons.hiking_rounded, const Color(0xFFE1F5EE)))),
             const SizedBox(width: 10),
-            Expanded(child: _miniExplore('Eventos', Icons.local_activity_rounded, const Color(0xFFFFE4EC))),
+            Expanded(child: InkWell(onTap: () => openCategory('Eventos'), borderRadius: BorderRadius.circular(21), child: _miniExplore('Eventos', Icons.local_activity_rounded, const Color(0xFFFFE4EC)))),
           ]),
           const SizedBox(height: 14),
-          const Center(child: Text('MVP 0.2.3 • SHOWCASE', style: TextStyle(fontSize: 9, color: brandMuted, fontWeight: FontWeight.w800, letterSpacing: 1))),
+          const Center(child: Text('MVP 0.2.7 • CATEGORY HUB', style: TextStyle(fontSize: 9, color: brandMuted, fontWeight: FontWeight.w800, letterSpacing: 1))),
         ],
       ),
     );
@@ -129,10 +139,14 @@ class _ShowcaseHomePageState extends State<ShowcaseHomePage> {
     ];
     return SizedBox(height: 122, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: items.length, separatorBuilder: (_, __) => const SizedBox(width: 12), itemBuilder: (_, i) {
       final x = items[i];
-      return SizedBox(width: 76, child: Column(children: [
-        Container(width: 70, height: 70, decoration: BoxDecoration(color: x.$4, borderRadius: BorderRadius.circular(23), boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 16, offset: Offset(0, 9))]), child: Center(child: Stack(alignment: Alignment.center, children: [Transform.translate(offset: const Offset(3, 5), child: Icon(x.$2, size: 39, color: Colors.black12)), Icon(x.$2, size: 39, color: x.$3), Positioned(top: 13, left: 22, child: Container(width: 16, height: 7, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .45), borderRadius: BorderRadius.circular(10))))]))),
-        const SizedBox(height: 9), Text(x.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
-      ]));
+      return SizedBox(width: 76, child: InkWell(
+        onTap: () => openCategory(x.$1),
+        borderRadius: BorderRadius.circular(23),
+        child: Column(children: [
+          Container(width: 70, height: 70, decoration: BoxDecoration(color: x.$4, borderRadius: BorderRadius.circular(23), boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 16, offset: Offset(0, 9))]), child: Center(child: Stack(alignment: Alignment.center, children: [Transform.translate(offset: const Offset(3, 5), child: Icon(x.$2, size: 39, color: Colors.black12)), Icon(x.$2, size: 39, color: x.$3), Positioned(top: 13, left: 22, child: Container(width: 16, height: 7, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .45), borderRadius: BorderRadius.circular(10))))]))),
+          const SizedBox(height: 9), Text(x.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
+        ]),
+      ));
     }));
   }
 
