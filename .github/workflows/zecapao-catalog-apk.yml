@@ -9,7 +9,7 @@ on:
       - 'zecapao_beta/lib/main_catalog.dart'
       - 'zecapao_beta/pubspec.yaml'
       - 'zecapao_beta/Ativos/Marca/**'
-      - 'zecapao_beta/tool/dynamic_media_patch.py'
+      - 'zecapao_beta/tool/**'
       - '.github/workflows/zecapao-catalog-apk.yml'
 
 jobs:
@@ -84,93 +84,25 @@ jobs:
           if src.resolve()!=dst.resolve(): src.unlink()
           PY
 
-      - name: Dependencies
+      - name: Apply final client package
         working-directory: zecapao_beta
-        run: flutter pub get
-
-      - name: Validate essential branding
-        working-directory: zecapao_beta
-        run: |
-          test -s Ativos/Marca/zecapao_app_icon.png
-          test -s Ativos/Marca/zecafe_logo_oficial.jpg
-          test -s Ativos/Marca/zecafe_products/espresso.webp
-
-      - name: Generate Android launcher icons
-        working-directory: zecapao_beta
-        run: dart run flutter_launcher_icons
-
-      - name: Repair showcase occasion rail syntax
-        working-directory: zecapao_beta
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('lib/catalog/showcase_home.dart')
-          s=p.read_text()
-          old='''return SizedBox(height: 150, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: items.length, separatorBuilder: (_, __) => const SizedBox(width: 11), itemBuilder: (_, i) { final x = items[i]; return Container(width: 222, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(gradient: LinearGradient(colors: x.$4), borderRadius: BorderRadius.circular(25)), child: Stack(children: [Positioned(right: -3, bottom: -3, child: Icon(x.$3, size: 88, color: Colors.white.withValues(alpha: .88))), Positioned(right: -30, top: -35, child: Container(width: 115, height: 115, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), shape: BoxShape.circle))), Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [SizedBox(width: 145, child: Text(x.$1, style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.05, fontWeight: FontWeight.w900))), const SizedBox(height: 7), SizedBox(width: 125, child: Text(x.$2, style: const TextStyle(color: Colors.white70, fontSize: 10.5, height: 1.25)))])]))); }));'''
-          new='''return SizedBox(height: 150, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: items.length, separatorBuilder: (_, __) => const SizedBox(width: 11), itemBuilder: (_, i) { final x = items[i]; return Container(width: 222, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(gradient: LinearGradient(colors: x.$4), borderRadius: BorderRadius.circular(25)), child: Stack(children: [Positioned(right: -3, bottom: -3, child: Icon(x.$3, size: 88, color: Colors.white.withValues(alpha: .88))), Positioned(right: -30, top: -35, child: Container(width: 115, height: 115, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), shape: BoxShape.circle))), Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [SizedBox(width: 145, child: Text(x.$1, style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.05, fontWeight: FontWeight.w900))), const SizedBox(height: 7), SizedBox(width: 125, child: Text(x.$2, style: const TextStyle(color: Colors.white70, fontSize: 10.5, height: 1.25)))]))])); }));'''
-          if old not in s: raise SystemExit('Trecho esperado do occasion rail nao encontrado')
-          p.write_text(s.replace(old,new,1))
-          PY
-
-      - name: Apply MVP 0.2.6 navigation rules
-        working-directory: zecapao_beta
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('lib/catalog/showcase_home.dart')
-          s=p.read_text()
-
-          if "import 'hospedagens_page.dart';" not in s:
-              marker="import 'branded_store.dart';"
-              if marker not in s: raise SystemExit('Import marker not found')
-              s=s.replace(marker, marker+"\nimport 'hospedagens_page.dart';",1)
-
-          old="""          Container(\n            height: 58,\n            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(19), boxShadow: const [BoxShadow(color: Color(0x10000000), blurRadius: 18, offset: Offset(0, 7))]),\n            child: const Row(children: [SizedBox(width: 18), Icon(Icons.search_rounded, size: 28), SizedBox(width: 14), Expanded(child: Text('O que você procura no Vale?', style: TextStyle(color: brandMuted, fontSize: 16)))]),\n          ),"""
-          new="""          InkWell(\n            onTap: () => setState(() => tab = 1),\n            borderRadius: BorderRadius.circular(19),\n            child: Container(\n              height: 58,\n              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(19), boxShadow: const [BoxShadow(color: Color(0x10000000), blurRadius: 18, offset: Offset(0, 7))]),\n              child: const Row(children: [SizedBox(width: 18), Icon(Icons.search_rounded, size: 28), SizedBox(width: 14), Expanded(child: Text('O que você procura no Vale?', style: TextStyle(color: brandMuted, fontSize: 16)))]),\n            ),\n          ),"""
-          if old not in s: raise SystemExit('Search box marker not found')
-          s=s.replace(old,new,1)
-
-          old="TextButton(onPressed: () {}, child: const Text('Ver agenda'))"
-          new="TextButton(onPressed: () => setState(() => tab = 3), child: const Text('Ver agenda'))"
-          if old not in s: raise SystemExit('Agenda marker not found')
-          s=s.replace(old,new,1)
-
-          old="return SizedBox(width: 76, child: Column(children: ["
-          new="return InkWell(onTap: () { if (i == 4) { Navigator.push(context, MaterialPageRoute(builder: (_) => const HospedagensPage())); } else { setState(() => tab = 1); } }, borderRadius: BorderRadius.circular(23), child: SizedBox(width: 76, child: Column(children: ["
-          if old not in s: raise SystemExit('Category tile marker not found')
-          s=s.replace(old,new,1)
-
-          old="      ]));\n    }));\n  }\n\n  Widget _zecafeHero"
-          new="      ])));\n    }));\n  }\n\n  Widget _zecafeHero"
-          if old not in s: raise SystemExit('Category closing marker not found')
-          s=s.replace(old,new,1)
-
-          s=s.replace("const Center(child: Text('MVP 0.2.3 • SHOWCASE'", "const Center(child: Text('MVP 0.2.6 • PREMIUM'",1)
-          p.write_text(s)
-          PY
-          dart format lib/catalog/showcase_home.dart lib/catalog/hospedagens_page.dart lib/catalog/showcase_shell.dart
-
-      - name: Apply dynamic media circuit
-        working-directory: zecapao_beta
-        shell: bash
         run: |
           python3 tool/dynamic_media_patch.py
-          dart format lib/catalog/core.dart lib/catalog/showcase_home.dart lib/catalog/merchant_store_v2.dart
+          python3 tool/entry_dynamic_patch.py
+          python3 tool/final_app_patch.py
+          python3 tool/checkout_location_patch.py
+          dart format lib/catalog
+          grep -q "app_entry_config" lib/catalog/signup_required.dart
+          grep -q "SharedPreferences" lib/catalog/signup_required.dart
+          grep -q "GlobalSearchPage" lib/catalog/showcase_home.dart
+          grep -q "HospitalityStorePage" lib/catalog/showcase_home.dart
+          grep -q "_restoreLocation" lib/catalog/checkout.dart
 
-      - name: Validate navigation contract
+      - name: Dependencies and launcher icons
         working-directory: zecapao_beta
         run: |
-          grep -q "HospedagensPage" lib/catalog/showcase_home.dart
-          grep -q "tab = 1" lib/catalog/showcase_home.dart
-          grep -q "tab = 3" lib/catalog/showcase_home.dart
-          ! grep -q "POUSADA DEMO" lib/catalog/showcase_shell.dart
-          grep -q "FAZER RESERVA" lib/catalog/pousada_demo.dart
-          grep -q "repo.categories()" lib/catalog/showcase_home.dart
-          grep -q "repo.events()" lib/catalog/showcase_home.dart
-          grep -q "repo.banners()" lib/catalog/showcase_home.dart
-          echo 'Contrato minimo de navegacao e midia dinamica validado.'
+          flutter pub get
+          dart run flutter_launcher_icons
 
       - name: Analyze catalog
         working-directory: zecapao_beta
@@ -183,6 +115,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-mvp-0.2.7-dynamic-media-apk
+          name: zecapao-0.3-final-client-catalog-apk
           path: zecapao_beta/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
           retention-days: 14
