@@ -36,22 +36,20 @@ jobs:
           cp zecapao_beta/Ativos/Marca/zecapao_app_icon.png.png /tmp/zecapao_build/Ativos/Marca/zecapao_app_icon.png
           rm -rf /tmp/zecapao_build/test
 
-      - name: Apply Admin dynamic circuit
+      - name: Apply final dynamic circuit
         working-directory: /tmp/zecapao_build
         run: |
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/dynamic_media_patch.py"
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/entry_dynamic_patch.py"
+          python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/final_app_patch.py"
           python3 - <<'PY'
           from pathlib import Path
           p = Path('lib/catalog/showcase_home.dart')
           s = p.read_text()
-          # Remove legacy event-card implementation left behind by the dynamic patch.
           start = s.find('  Widget _eventCard(')
           end = s.find('  Widget _occasionRail()', start)
           if start != -1 and end != -1:
               s = s[:start] + s[end:]
-          # The old occasion rail is also malformed after the media patch. The
-          # dynamic Home no longer needs it, so remove the call and the method.
           s = s.replace('          _occasionRail(),\n', '')
           start = s.find('  Widget _occasionRail()')
           end = s.find('  Widget _valecoin()', start)
@@ -61,8 +59,10 @@ jobs:
           print('Removed malformed legacy event/occasion blocks')
           PY
           grep -q "app_entry_config" lib/catalog/signup_required.dart
-          grep -q "repo.banners" lib/catalog/showcase_home.dart
-          echo "Tela de Entrada + Home ligadas ao Admin"
+          grep -q "SharedPreferences" lib/catalog/signup_required.dart
+          grep -q "GlobalSearchPage" lib/catalog/showcase_home.dart
+          grep -q "HospitalityStorePage" lib/catalog/showcase_home.dart
+          echo "Pacote final aplicado: entrada + sessão + localização + busca + hospedagem"
 
       - name: Configure Android identity and Maps
         working-directory: /tmp/zecapao_build
@@ -105,7 +105,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-2.0-admin-dynamic-entry-home-apk
+          name: zecapao-0.3-final-client-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
