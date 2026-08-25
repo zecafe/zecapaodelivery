@@ -45,12 +45,20 @@ jobs:
           from pathlib import Path
           p = Path('lib/catalog/showcase_home.dart')
           s = p.read_text()
+          # Remove legacy event-card implementation left behind by the dynamic patch.
           start = s.find('  Widget _eventCard(')
           end = s.find('  Widget _occasionRail()', start)
           if start != -1 and end != -1:
               s = s[:start] + s[end:]
-              p.write_text(s)
-              print('Removed legacy _eventCard block')
+          # The old occasion rail is also malformed after the media patch. The
+          # dynamic Home no longer needs it, so remove the call and the method.
+          s = s.replace('          _occasionRail(),\n', '')
+          start = s.find('  Widget _occasionRail()')
+          end = s.find('  Widget _valecoin()', start)
+          if start != -1 and end != -1:
+              s = s[:start] + s[end:]
+          p.write_text(s)
+          print('Removed malformed legacy event/occasion blocks')
           PY
           grep -q "app_entry_config" lib/catalog/signup_required.dart
           grep -q "repo.banners" lib/catalog/showcase_home.dart
