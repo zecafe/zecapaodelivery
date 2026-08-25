@@ -42,7 +42,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage>{
 
       for(final s in stores){
         List<Product> products=[];try{products=await widget.repo.products(s.id);}catch(_){}
-        final category=cats[s.categoryIdForSearch]?['name']?.toString()??'';
+        final category=cats[s.categoryId]?['name']?.toString()??'';
         final subNames=storeSubs[s.id]??const[];
         final hay=norm([s.name,s.description,category,...subNames,...products.expand((p)=>[p.name,p.category,p.description])].join(' '));
         if(hay.contains(q))out.add(_Hit.store(s,detail:[category,...subNames].where((x)=>x.isNotEmpty).join(' • ')));
@@ -66,8 +66,6 @@ class _GlobalSearchPageState extends State<GlobalSearchPage>{
     Expanded(child:hits.isEmpty?Center(child:Text(controller.text.trim().length<2?'Digite o que você procura no Vale.':'Nenhum resultado encontrado.',style:const TextStyle(color:brandMuted))):ListView.separated(padding:const EdgeInsets.fromLTRB(14,6,14,24),itemCount:hits.length,separatorBuilder:(_,__)=>const Divider(height:1),itemBuilder:(_,i){final h=hits[i];return ListTile(onTap:()=>open(h),leading:CircleAvatar(backgroundColor:brandRedSoft,child:Icon(h.icon,color:brandRed)),title:Text(h.title,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:h.detail.isEmpty?null:Text(h.detail),trailing:const Icon(Icons.chevron_right_rounded));}))
   ])));
 }
-
-extension _StoreSearchFields on Store{String get categoryIdForSearch=>'';}
 
 class _Hit{
   final String title,detail;final IconData icon;final Store? store;final String? category;
