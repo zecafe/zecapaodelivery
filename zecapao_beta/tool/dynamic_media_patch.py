@@ -11,6 +11,13 @@ if 'class CategoryItem{' not in s:
         raise SystemExit('core marker classes not found')
     s = s.replace(marker, insert + marker, 1)
 
+if 'Future<List<Store>> featuredStores()' not in s:
+    marker = " Future<List<Store>> stores()async{final d=await client.from('stores').select().eq('is_active',true).order('name');return(d as List).map((e)=>Store.fromMap(Map<String,dynamic>.from(e))).toList();}\n"
+    add = marker + " Future<List<Store>> featuredStores()async{final d=await client.from('stores').select().eq('is_active',true).eq('is_featured',true).order('featured_sort_order').order('name');return(d as List).map((e)=>Store.fromMap(Map<String,dynamic>.from(e))).toList();}\n"
+    if marker not in s:
+        raise SystemExit('core stores marker not found')
+    s = s.replace(marker, add, 1)
+
 if 'Future<List<CategoryItem>> categories()' not in s:
     marker = " Future<List<CampaignBanner>> banners()async{final d=await client.from('campaign_banners').select().order('sort_order');return(d as List).map((e)=>CampaignBanner.fromMap(Map<String,dynamic>.from(e))).toList();}\n"
     add = marker + " Future<List<CategoryItem>> categories()async{final d=await client.from('categories').select().eq('is_active',true).order('sort_order');return(d as List).map((e)=>CategoryItem.fromMap(Map<String,dynamic>.from(e))).toList();}\n Future<List<EventItem>> events()async{final now=DateTime.now().toIso8601String();final d=await client.from('events').select().eq('is_active',true).gte('ends_at',now).order('sort_order');return(d as List).map((e)=>EventItem.fromMap(Map<String,dynamic>.from(e))).toList();}\n"
@@ -187,6 +194,69 @@ s, n = re.subn(r"  Widget _zecafeHero\(List<Store> stores\) \{.*?\n  \}\n\n  Wid
 if n != 1:
     raise SystemExit('hero block not found')
 
+partners = """  Widget _partnerRail(List<Store> stores) {
+    return FutureBuilder<List<Store>>(
+      future: repo.featuredStores(),
+      builder: (_, snap) {
+        final items = snap.data ?? <Store>[];
+        if (items.isEmpty) {
+          return Container(
+            height: 120,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22)),
+            child: const Text('Parceiros em destaque em atualização', style: TextStyle(color: brandMuted)),
+          );
+        }
+        return SizedBox(
+          height: 152,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (_, i) {
+              final store = items[i];
+              return InkWell(
+                onTap: () => openStore(store),
+                borderRadius: BorderRadius.circular(22),
+                child: Container(
+                  width: 132,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 16, offset: Offset(0, 8))],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(17),
+                        child: SizedBox(
+                          width: 78,
+                          height: 78,
+                          child: store.logoUrl.isNotEmpty
+                              ? Image.network(store.logoUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Image.asset(store.localLogo, fit: BoxFit.cover))
+                              : Image.asset(store.localLogo, fit: BoxFit.cover),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(store.name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _brandTile"""
+s, n = re.subn(r"  Widget _partnerRail\(List<Store> stores\) \{.*?\n  \}\n\n  Widget _brandTile", partners, s, count=1, flags=re.S)
+if n != 1:
+    raise SystemExit('partner rail block not found')
+
 events = """  Widget _events() {
     return FutureBuilder<List<EventItem>>(
       future: repo.events(),
@@ -255,4 +325,4 @@ if n != 1:
 home.write_text(s)
 print('Dynamic media patch applied')
 
-# Build trigger: Zecapao MVP 0.2.7 dynamic media circuit - syntax fix
+# Build trigger: Zecapao MVP 0.2.8 featured partners from Admin
