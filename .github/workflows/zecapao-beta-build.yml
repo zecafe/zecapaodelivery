@@ -42,6 +42,7 @@ jobs:
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/dynamic_media_patch.py"
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/entry_dynamic_patch.py"
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/final_app_patch.py"
+          python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/checkout_location_patch.py"
           python3 - <<'PY'
           from pathlib import Path
           p = Path('lib/catalog/showcase_home.dart')
@@ -62,7 +63,8 @@ jobs:
           grep -q "SharedPreferences" lib/catalog/signup_required.dart
           grep -q "GlobalSearchPage" lib/catalog/showcase_home.dart
           grep -q "HospitalityStorePage" lib/catalog/showcase_home.dart
-          echo "Pacote final aplicado: entrada + sessão + localização + busca + hospedagem"
+          grep -q "_restoreLocation" lib/catalog/checkout.dart
+          echo "Pacote final aplicado: entrada + sessão + localização + busca + hospedagem + checkout"
 
       - name: Configure Android identity and Maps
         working-directory: /tmp/zecapao_build
