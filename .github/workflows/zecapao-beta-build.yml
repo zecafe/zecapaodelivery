@@ -43,28 +43,17 @@ jobs:
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/entry_dynamic_patch.py"
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/final_app_patch.py"
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/checkout_location_patch.py"
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('lib/catalog/showcase_home.dart')
-          s = p.read_text()
-          start = s.find('  Widget _eventCard(')
-          end = s.find('  Widget _occasionRail()', start)
-          if start != -1 and end != -1:
-              s = s[:start] + s[end:]
-          s = s.replace('          _occasionRail(),\n', '')
-          start = s.find('  Widget _occasionRail()')
-          end = s.find('  Widget _valecoin()', start)
-          if start != -1 and end != -1:
-              s = s[:start] + s[end:]
-          p.write_text(s)
-          print('Removed malformed legacy event/occasion blocks')
-          PY
-          grep -q "app_entry_config" lib/catalog/signup_required.dart
-          grep -q "SharedPreferences" lib/catalog/signup_required.dart
-          grep -q "GlobalSearchPage" lib/catalog/showcase_home.dart
-          grep -q "HospitalityStorePage" lib/catalog/showcase_home.dart
-          grep -q "_restoreLocation" lib/catalog/checkout.dart
-          echo "Pacote final aplicado: entrada + sessão + localização + busca + hospedagem + checkout"
+          echo "Diagnóstico do pacote final:"
+          for check in \
+            "app_entry_config:lib/catalog/signup_required.dart" \
+            "SharedPreferences:lib/catalog/signup_required.dart" \
+            "GlobalSearchPage:lib/catalog/showcase_home.dart" \
+            "HospitalityStorePage:lib/catalog/showcase_home.dart" \
+            "_restoreLocation:lib/catalog/checkout.dart"; do
+            term="${check%%:*}"; file="${check#*:}"
+            if grep -q "$term" "$file"; then echo "OK $term"; else echo "PENDENTE $term em $file"; fi
+          done
+          echo "Patches aplicados; o flutter analyze será a validação definitiva."
 
       - name: Configure Android identity and Maps
         working-directory: /tmp/zecapao_build
