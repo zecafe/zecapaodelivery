@@ -41,6 +41,17 @@ jobs:
         run: |
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/dynamic_media_patch.py"
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/entry_dynamic_patch.py"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/catalog/showcase_home.dart')
+          s = p.read_text()
+          start = s.find('  Widget _eventCard(')
+          end = s.find('  Widget _occasionRail()', start)
+          if start != -1 and end != -1:
+              s = s[:start] + s[end:]
+              p.write_text(s)
+              print('Removed legacy _eventCard block')
+          PY
           grep -q "app_entry_config" lib/catalog/signup_required.dart
           grep -q "repo.banners" lib/catalog/showcase_home.dart
           echo "Tela de Entrada + Home ligadas ao Admin"
