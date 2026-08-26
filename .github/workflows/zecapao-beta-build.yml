@@ -51,9 +51,9 @@ jobs:
           rm -rf /tmp/zecapao_build/test
           git fetch --depth=1 origin 02ebafe4570fb1334a15626671cd515cb60cd317
           git show 02ebafe4570fb1334a15626671cd515cb60cd317:zecapao_beta/lib/catalog/showcase_home.dart > /tmp/zecapao_build/lib/catalog/showcase_home.dart
-          echo "Home premium histórica restaurada como base do 0.3.2"
+          echo "Home premium histórica restaurada como base do 0.3.3"
 
-      - name: Apply 0.3.2 final circuit
+      - name: Apply 0.3.3 final circuit
         working-directory: /tmp/zecapao_build
         run: |
           python3 - <<'PY'
@@ -85,24 +85,22 @@ jobs:
           p.write_text(s)
           print('Home premium consolidada sem bloco legado malformado')
           PY
-          echo "0.3.2: entrada + hospedagem premium + checkout/mapa com assinatura estável"
+          echo "0.3.3: checkout usa mapa OSM independente da renderização Google"
 
-      - name: Configure Android identity and Maps
+      - name: Configure Android identity
         working-directory: /tmp/zecapao_build
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import os,re
+          import re
           manifest=Path('android/app/src/main/AndroidManifest.xml')
           text=manifest.read_text()
           marker='<manifest xmlns:android="http://schemas.android.com/apk/res/android">'
+          if 'android.permission.INTERNET' not in text:
+              text=text.replace(marker,marker+'\n    <uses-permission android:name="android.permission.INTERNET" />',1)
           if 'ACCESS_FINE_LOCATION' not in text:
               text=text.replace(marker,marker+'\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',1)
-          key=os.environ.get('GOOGLE_MAPS_API_KEY','')
-          app_icon='android:icon="@mipmap/ic_launcher">'
-          if 'com.google.android.geo.API_KEY' not in text:
-              text=text.replace(app_icon,app_icon+f'\n        <meta-data android:name="com.google.android.geo.API_KEY" android:value="{key}" />',1)
           manifest.write_text(text)
           gradle=Path('android/app/build.gradle.kts')
           g=gradle.read_text().replace('minSdk = flutter.minSdkVersion','minSdk = 24')
@@ -115,7 +113,6 @@ jobs:
           dst.parent.mkdir(parents=True,exist_ok=True); dst.write_text(main)
           if src.resolve()!=dst.resolve(): src.unlink()
           PY
-          test -n "$GOOGLE_MAPS_API_KEY" || { echo 'GOOGLE_MAPS_API_KEY ausente'; exit 1; }
 
       - name: Build APK
         working-directory: /tmp/zecapao_build
@@ -129,7 +126,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-0.3.2-final-fixes-apk
+          name: zecapao-0.3.3-checkout-map-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
