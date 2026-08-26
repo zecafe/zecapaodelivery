@@ -31,4 +31,19 @@ new="""          InkWell(
           ),"""
 if old in s:s=s.replace(old,new,1)
 home.write_text(s)
-print('Final app patch applied: search + hospitality + enriched stores')
+
+hub=Path('lib/catalog/category_hub.dart')
+h=hub.read_text()
+if "import 'hospitality_store.dart';" not in h:
+    h=h.replace("import 'branded_store.dart';", "import 'branded_store.dart';\nimport 'hospitality_store.dart';",1)
+old_open="Future<void> _open(Store store)async{if(!store.isOpen)return;await Navigator.push(context,MaterialPageRoute(builder:(_)=>BrandedStorePage(store:store,customerName:widget.customerName,phone:widget.phone,repo:widget.repo)));}"
+new_open="Future<void> _open(Store store)async{if(!store.isOpen&&store.partnerType!='hospitality')return;await Navigator.push(context,MaterialPageRoute(builder:(_)=>store.partnerType=='hospitality'?HospitalityStorePage(store:store):BrandedStorePage(store:store,customerName:widget.customerName,phone:widget.phone,repo:widget.repo)));}"
+h=h.replace(old_open,new_open,1)
+h=h.replace("onTap:s.isOpen?()=>_open(s):null", "onTap:(s.isOpen||s.partnerType=='hospitality')?()=>_open(s):null",1)
+hub.write_text(h)
+
+hospitality=Path('lib/catalog/hospitality_store.dart')
+hs=hospitality.read_text()
+hs=hs.replace("    final ok = await launchUrl(Uri.parse(raw), mode: LaunchMode.externalApplication);", "    final normalized = raw.startsWith('http://') || raw.startsWith('https://') ? raw : 'https://$raw';\n    final ok = await launchUrl(Uri.parse(normalized), mode: LaunchMode.externalApplication);",1)
+hospitality.write_text(hs)
+print('Final app patch applied: search + hospitality routing + enriched stores')
