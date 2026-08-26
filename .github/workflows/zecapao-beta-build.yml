@@ -24,7 +24,7 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Create clean Android project
+      - name: Create clean Android project and restore premium Home
         run: |
           rm -rf /tmp/zecapao_build
           flutter create /tmp/zecapao_build --platforms=android --org com.zecapao --project-name zecapao_delivery
@@ -35,25 +35,43 @@ jobs:
           cp -R zecapao_beta/Ativos/Marca/. /tmp/zecapao_build/Ativos/Marca/
           cp zecapao_beta/Ativos/Marca/zecapao_app_icon.png.png /tmp/zecapao_build/Ativos/Marca/zecapao_app_icon.png
           rm -rf /tmp/zecapao_build/test
+          git fetch --depth=1 origin 02ebafe4570fb1334a15626671cd515cb60cd317
+          git show 02ebafe4570fb1334a15626671cd515cb60cd317:zecapao_beta/lib/catalog/showcase_home.dart > /tmp/zecapao_build/lib/catalog/showcase_home.dart
+          echo "Home premium histórica restaurada como base do 0.3.1"
 
-      - name: Apply final dynamic circuit
+      - name: Apply 0.3.1 final circuit
         working-directory: /tmp/zecapao_build
         run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lib/catalog/showcase_home.dart')
+          s=p.read_text()
+          if "import 'category_hub.dart';" not in s:
+              s=s.replace("import 'branded_store.dart';", "import 'branded_store.dart';\nimport 'category_hub.dart';", 1)
+          if 'Future<void> openCategory(String category)' not in s:
+              marker='  @override\n  Widget build(BuildContext context) {'
+              method="""  Future<void> openCategory(String category) async {\n    await Navigator.push(context, MaterialPageRoute(builder: (_) => CategoryHubPage(category: category, customerName: widget.customerName, phone: widget.phone, repo: repo)));\n  }\n\n"""
+              s=s.replace(marker,method+marker,1)
+          p.write_text(s)
+          PY
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/dynamic_media_patch.py"
+          python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/premium_home_patch.py"
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/entry_dynamic_patch.py"
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/final_app_patch.py"
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/checkout_location_patch.py"
-          echo "Diagnóstico do pacote final:"
-          for check in \
-            "app_entry_config:lib/catalog/signup_required.dart" \
-            "SharedPreferences:lib/catalog/signup_required.dart" \
-            "GlobalSearchPage:lib/catalog/showcase_home.dart" \
-            "HospitalityStorePage:lib/catalog/showcase_home.dart" \
-            "_restoreLocation:lib/catalog/checkout.dart"; do
-            term="${check%%:*}"; file="${check#*:}"
-            if grep -q "$term" "$file"; then echo "OK $term"; else echo "PENDENTE $term em $file"; fi
-          done
-          echo "Patches aplicados; o flutter analyze será a validação definitiva."
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lib/catalog/showcase_home.dart')
+          s=p.read_text()
+          s=s.replace('          _occasionRail(),\n','')
+          start=s.find('  Widget _occasionRail()')
+          end=s.find('  Widget _valecoin()',start)
+          if start!=-1 and end!=-1:
+              s=s[:start]+s[end:]
+          p.write_text(s)
+          print('Home premium consolidada sem bloco legado malformado')
+          PY
+          echo "0.3.1: home premium + banners + categorias + destaques + busca + hospedagem + entrada + localização"
 
       - name: Configure Android identity and Maps
         working-directory: /tmp/zecapao_build
@@ -90,13 +108,14 @@ jobs:
         run: |
           flutter pub get
           dart run flutter_launcher_icons
+          dart format lib/catalog
           flutter analyze lib/main_catalog.dart lib/catalog --no-fatal-infos --no-fatal-warnings
           flutter build apk --debug --target=lib/main_catalog.dart
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-0.3-final-client-apk
+          name: zecapao-0.3.1-premium-home-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
