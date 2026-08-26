@@ -51,9 +51,9 @@ jobs:
           rm -rf /tmp/zecapao_build/test
           git fetch --depth=1 origin 02ebafe4570fb1334a15626671cd515cb60cd317
           git show 02ebafe4570fb1334a15626671cd515cb60cd317:zecapao_beta/lib/catalog/showcase_home.dart > /tmp/zecapao_build/lib/catalog/showcase_home.dart
-          echo "Home premium histórica restaurada como base do 0.3.3"
+          echo "Home premium histórica restaurada como base do 0.3.4"
 
-      - name: Apply 0.3.3 final circuit
+      - name: Apply 0.3.4 final circuit
         working-directory: /tmp/zecapao_build
         run: |
           python3 - <<'PY'
@@ -71,8 +71,10 @@ jobs:
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/dynamic_media_patch.py"
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/premium_home_patch.py"
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/entry_dynamic_patch.py"
+          python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/app_user_tracking_patch.py"
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/final_app_patch.py"
           python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/checkout_location_patch.py"
+          python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/ecosystem_home_patch.py"
           python3 - <<'PY'
           from pathlib import Path
           p=Path('lib/catalog/showcase_home.dart')
@@ -85,7 +87,7 @@ jobs:
           p.write_text(s)
           print('Home premium consolidada sem bloco legado malformado')
           PY
-          echo "0.3.3: checkout usa mapa OSM independente da renderização Google"
+          echo "0.3.4: usuarios do app + Explore o Vale + carrossel ecossistema"
 
       - name: Configure Android identity
         working-directory: /tmp/zecapao_build
@@ -126,7 +128,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zecapao-0.3.3-checkout-map-apk
+          name: zecapao-0.3.4-users-explore-apk
           path: /tmp/zecapao_build/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
