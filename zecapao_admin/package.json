@@ -1,11 +1,11 @@
 {
   "name": "zecapao-admin",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node src/patch-admin.mjs && vite",
+    "build": "node src/patch-admin.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
