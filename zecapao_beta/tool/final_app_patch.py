@@ -12,9 +12,22 @@ core.write_text(s)
 home=Path('lib/catalog/showcase_home.dart')
 s=home.read_text()
 if "import 'global_search.dart';" not in s:
-    s=s.replace("import 'category_hub.dart';", "import 'category_hub.dart';\nimport 'global_search.dart';\nimport 'hospitality_store.dart';",1)
+    s=s.replace("import 'category_hub.dart';", "import 'category_hub.dart';\nimport 'global_search.dart';\nimport 'hospitality_store.dart';\nimport 'nav_pages.dart';",1)
+elif "import 'nav_pages.dart';" not in s:
+    s=s.replace("import 'hospitality_store.dart';", "import 'hospitality_store.dart';\nimport 'nav_pages.dart';",1)
 s=s.replace("await Navigator.push(context, MaterialPageRoute(builder: (_) => BrandedStorePage(store: store, customerName: widget.customerName, phone: widget.phone, repo: repo)));", "await Navigator.push(context, MaterialPageRoute(builder: (_) => store.partnerType=='hospitality'?HospitalityStorePage(store:store):BrandedStorePage(store: store, customerName: widget.customerName, phone: widget.phone, repo: repo)));",1)
-s=s.replace("onDestinationSelected: (i) => setState(() => tab = i),", "onDestinationSelected: (i) { if(i==1){Navigator.push(context,MaterialPageRoute(builder:(_)=>GlobalSearchPage(customerName:widget.customerName,phone:widget.phone,repo:repo)));return;} setState(() => tab = i); },",1)
+old_nav="onDestinationSelected: (i) => setState(() => tab = i),"
+new_nav="""onDestinationSelected: (i) {
+          if(i==0){setState(()=>tab=0);return;}
+          if(i==1){Navigator.push(context,MaterialPageRoute(builder:(_)=>GlobalSearchPage(customerName:widget.customerName,phone:widget.phone,repo:repo)));return;}
+          if(i==2){Navigator.push(context,MaterialPageRoute(builder:(_)=>OrdersPage(phone:widget.phone)));return;}
+          if(i==3){Navigator.push(context,MaterialPageRoute(builder:(_)=>ExplorePage(customerName:widget.customerName,phone:widget.phone,repo:repo)));return;}
+          if(i==4){Navigator.push(context,MaterialPageRoute(builder:(_)=>AccountPage(customerName:widget.customerName,phone:widget.phone)));return;}
+        },"""
+if old_nav in s:
+    s=s.replace(old_nav,new_nav,1)
+else:
+    s=re.sub(r"onDestinationSelected:\s*\(i\)\s*\{.*?\},\n\s*destinations:",new_nav+"\n        destinations:",s,count=1,flags=re.S)
 old="""          Container(
             height: 58,
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(19), boxShadow: const [BoxShadow(color: Color(0x10000000), blurRadius: 18, offset: Offset(0, 7))]),
@@ -46,4 +59,4 @@ hospitality=Path('lib/catalog/hospitality_store.dart')
 hs=hospitality.read_text()
 hs=hs.replace("    final ok = await launchUrl(Uri.parse(raw), mode: LaunchMode.externalApplication);", "    final normalized = raw.startsWith('http://') || raw.startsWith('https://') ? raw : 'https://$raw';\n    final ok = await launchUrl(Uri.parse(normalized), mode: LaunchMode.externalApplication);",1)
 hospitality.write_text(hs)
-print('Final app patch applied: search + hospitality routing + enriched stores')
+print('Final app patch applied: search + hospitality + functional bottom navigation')
