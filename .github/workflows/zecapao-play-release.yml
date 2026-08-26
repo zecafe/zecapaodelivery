@@ -1,0 +1,136 @@
+name: Zecapao Google Play AAB
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-aab:
+    runs-on: ubuntu-latest
+    env:
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      UPLOAD_KEYSTORE_BASE64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
+      UPLOAD_STORE_PASSWORD: ${{ secrets.UPLOAD_STORE_PASSWORD }}
+      UPLOAD_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
+      UPLOAD_KEY_PASSWORD: ${{ secrets.UPLOAD_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.9'
+          channel: stable
+          cache: true
+
+      - name: Validate release signing secrets
+        shell: bash
+        run: |
+          test -n "$UPLOAD_KEYSTORE_BASE64" || (echo "Missing UPLOAD_KEYSTORE_BASE64" && exit 1)
+          test -n "$UPLOAD_STORE_PASSWORD" || (echo "Missing UPLOAD_STORE_PASSWORD" && exit 1)
+          test -n "$UPLOAD_KEY_ALIAS" || (echo "Missing UPLOAD_KEY_ALIAS" && exit 1)
+          test -n "$UPLOAD_KEY_PASSWORD" || (echo "Missing UPLOAD_KEY_PASSWORD" && exit 1)
+
+      - name: Create clean Android release project
+        run: |
+          rm -rf /tmp/zecapao_release
+          flutter create /tmp/zecapao_release --platforms=android --org com.zecapao --project-name zecapao_delivery
+          cp zecapao_beta/pubspec.yaml /tmp/zecapao_release/pubspec.yaml
+          rm -rf /tmp/zecapao_release/lib
+          cp -R zecapao_beta/lib /tmp/zecapao_release/lib
+          mkdir -p /tmp/zecapao_release/Ativos/Marca
+          cp -R zecapao_beta/Ativos/Marca/. /tmp/zecapao_release/Ativos/Marca/
+          cp zecapao_beta/Ativos/Marca/zecapao_app_icon.png.png /tmp/zecapao_release/Ativos/Marca/zecapao_app_icon.png
+          rm -rf /tmp/zecapao_release/test
+          git fetch --depth=1 origin 02ebafe4570fb1334a15626671cd515cb60cd317
+          git show 02ebafe4570fb1334a15626671cd515cb60cd317:zecapao_beta/lib/catalog/showcase_home.dart > /tmp/zecapao_release/lib/catalog/showcase_home.dart
+
+      - name: Apply approved 0.3.4 circuit
+        working-directory: /tmp/zecapao_release
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lib/catalog/showcase_home.dart')
+          s=p.read_text()
+          if "import 'category_hub.dart';" not in s:
+              s=s.replace("import 'branded_store.dart';", "import 'branded_store.dart';\nimport 'category_hub.dart';", 1)
+          if 'Future<void> openCategory(String category)' not in s:
+              marker='  @override\n  Widget build(BuildContext context) {'
+              method="""  Future<void> openCategory(String category) async {\n    await Navigator.push(context, MaterialPageRoute(builder: (_) => CategoryHubPage(category: category, customerName: widget.customerName, phone: widget.phone, repo: repo)));\n  }\n\n"""
+              s=s.replace(marker,method+marker,1)
+          p.write_text(s)
+          PY
+          python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/dynamic_media_patch.py"
+          python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/premium_home_patch.py"
+          python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/entry_dynamic_patch.py"
+          python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/app_user_tracking_patch.py"
+          python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/final_app_patch.py"
+          python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/checkout_location_patch.py"
+          python3 "$GITHUB_WORKSPACE/zecapao_beta/tool/ecosystem_home_patch.py"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lib/catalog/showcase_home.dart')
+          s=p.read_text().replace('          _occasionRail(),\n','')
+          start=s.find('  Widget _occasionRail()')
+          end=s.find('  Widget _valecoin()',start)
+          if start!=-1 and end!=-1:s=s[:start]+s[end:]
+          p.write_text(s)
+          PY
+
+      - name: Configure Android release identity and signing
+        working-directory: /tmp/zecapao_release
+        shell: bash
+        run: |
+          echo "$UPLOAD_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storePassword=$UPLOAD_STORE_PASSWORD
+          keyPassword=$UPLOAD_KEY_PASSWORD
+          keyAlias=$UPLOAD_KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          manifest=Path('android/app/src/main/AndroidManifest.xml')
+          text=manifest.read_text()
+          marker='<manifest xmlns:android="http://schemas.android.com/apk/res/android">'
+          if 'android.permission.INTERNET' not in text:text=text.replace(marker,marker+'\n    <uses-permission android:name="android.permission.INTERNET" />',1)
+          if 'ACCESS_FINE_LOCATION' not in text:text=text.replace(marker,marker+'\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',1)
+          manifest.write_text(text)
+          gradle=Path('android/app/build.gradle.kts')
+          g=gradle.read_text()
+          g='import java.util.Properties\nimport java.io.FileInputStream\n'+g
+          g=g.replace('plugins {','val keystoreProperties = Properties()\nval keystorePropertiesFile = rootProject.file("key.properties")\nif (keystorePropertiesFile.exists()) { keystoreProperties.load(FileInputStream(keystorePropertiesFile)) }\n\nplugins {',1)
+          g=g.replace('minSdk = flutter.minSdkVersion','minSdk = 24')
+          g=re.sub(r'namespace\s*=\s*"[^"]+"','namespace = "com.zecapao.entrega"',g)
+          g=re.sub(r'applicationId\s*=\s*"[^"]+"','applicationId = "com.zecapao.entrega"',g)
+          anchor='    buildTypes {'
+          signing='''    signingConfigs {\n        create("release") {\n            keyAlias = keystoreProperties["keyAlias"] as String\n            keyPassword = keystoreProperties["keyPassword"] as String\n            storeFile = file(keystoreProperties["storeFile"] as String)\n            storePassword = keystoreProperties["storePassword"] as String\n        }\n    }\n'''
+          g=g.replace(anchor,signing+anchor,1)
+          g=g.replace('signingConfig = signingConfigs.getByName("debug")','signingConfig = signingConfigs.getByName("release")')
+          gradle.write_text(g)
+          src=list(Path('android/app/src/main').rglob('MainActivity.kt'))[0]
+          main=re.sub(r'^package\s+[^\n]+','package com.zecapao.entrega',src.read_text(),flags=re.M)
+          dst=Path('android/app/src/main/kotlin/com/zecapao/entrega/MainActivity.kt')
+          dst.parent.mkdir(parents=True,exist_ok=True);dst.write_text(main)
+          if src.resolve()!=dst.resolve():src.unlink()
+          PY
+
+      - name: Build signed AAB
+        working-directory: /tmp/zecapao_release
+        run: |
+          flutter pub get
+          dart run flutter_launcher_icons
+          dart format lib/catalog
+          flutter analyze lib/main_catalog.dart lib/catalog --no-fatal-infos --no-fatal-warnings
+          flutter build appbundle --release --target=lib/main_catalog.dart --build-name=1.0.0 --build-number=16
+          jarsigner -verify -verbose -certs build/app/outputs/bundle/release/app-release.aab >/dev/null
+
+      - name: Upload Play Store AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: zecapao-play-1.0.0-16-aab
+          path: /tmp/zecapao_release/build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 30
