@@ -143,7 +143,74 @@ s, n = re.subn(r"  Widget _partnerRail\(List<Store> stores\) \{.*?\n  \}\n\n  Wi
 if n != 1:
     raise SystemExit('premium partner rail block not found')
 
-# Keep the original premium event rail for visual parity. The workflow removes only
-# the malformed legacy occasion widget after this patch, before analyze/build.
+events = """  Widget _events() {
+    return FutureBuilder<List<EventItem>>(
+      future: repo.events(),
+      builder: (_, snap) {
+        final items = snap.data ?? <EventItem>[];
+        if (items.isEmpty) {
+          return Container(
+            height: 150,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+            child: const Text('Agenda cultural em atualização', style: TextStyle(color: brandMuted)),
+          );
+        }
+        return SizedBox(
+          height: 190,
+          child: PageView.builder(
+            controller: PageController(viewportFraction: .93),
+            itemCount: items.length,
+            itemBuilder: (_, i) {
+              final e = items[i];
+              final date = e.startsAt == null
+                  ? ''
+                  : '${e.startsAt!.day.toString().padLeft(2, '0')}/${e.startsAt!.month.toString().padLeft(2, '0')}';
+              return Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      e.imageUrl.isNotEmpty
+                          ? Image.network(e.imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: brandNavy))
+                          : Container(color: brandNavy),
+                      Container(decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xC7000000), Color(0x25000000)], begin: Alignment.centerLeft, end: Alignment.centerRight))),
+                      Padding(
+                        padding: const EdgeInsets.all(21),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            if (date.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(color: brandYellow, borderRadius: BorderRadius.circular(10)),
+                                child: Text(date, style: const TextStyle(color: brandInk, fontSize: 9, fontWeight: FontWeight.w900)),
+                              ),
+                            if (date.isNotEmpty) const SizedBox(height: 9),
+                            Text(e.title, maxLines: 2, style: const TextStyle(color: Colors.white, fontSize: 25, height: 1, fontWeight: FontWeight.w900)),
+                            if (e.subtitle.isNotEmpty) ...[const SizedBox(height: 6), Text(e.subtitle, maxLines: 2, style: const TextStyle(color: Colors.white70, fontSize: 11))],
+                            if (e.venue.isNotEmpty) ...[const SizedBox(height: 6), Text(e.venue, style: const TextStyle(color: brandYellow, fontSize: 9, fontWeight: FontWeight.w900))],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _eventCard"""
+s, n = re.subn(r"  Widget _events\(\) \{.*?\n  \}\n\n  Widget _eventCard", events, s, count=1, flags=re.S)
+if n != 1:
+    raise SystemExit('premium events block not found')
+
 p.write_text(s)
-print('Premium Home restored: dynamic categories + banners + featured partners')
+print('Premium Home restored: dynamic categories + banners + featured partners + CMS events')
