@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core.dart';
 
@@ -18,9 +19,9 @@ class DeliveryLocationPickerPage extends StatefulWidget {
 
 class _DeliveryLocationPickerPageState extends State<DeliveryLocationPickerPage> {
   static const valeDoCapao=LatLng(-12.6115,-41.4946);
+  final mapController=MapController();
   LatLng selected=valeDoCapao;
-  GoogleMapController? controller;
-  bool locating=false,permissionReady=false,mapReady=false;
+  bool locating=false,mapReady=false;
   String? message;
 
   @override void initState(){super.initState();_bootstrap();}
@@ -49,40 +50,53 @@ class _DeliveryLocationPickerPageState extends State<DeliveryLocationPickerPage>
       var permission=await Geolocator.checkPermission();
       if(permission==LocationPermission.denied)permission=await Geolocator.requestPermission();
       if(permission==LocationPermission.denied||permission==LocationPermission.deniedForever){
-        if(mounted)setState(()=>message='Permissão não concedida. O mapa continua disponível para marcação manual.');
+        if(mounted)setState(()=>message='Permissão não concedida. Você ainda pode marcar o ponto manualmente.');
         return;
       }
-      if(mounted)setState(()=>permissionReady=true);
       final pos=await Geolocator.getCurrentPosition(locationSettings:const LocationSettings(accuracy:LocationAccuracy.high,timeLimit:Duration(seconds:12)));
       final point=LatLng(pos.latitude,pos.longitude);
       await _save(point);
       if(!mounted)return;
       setState((){selected=point;message=null;});
-      if(mapReady)await controller?.animateCamera(CameraUpdate.newLatLngZoom(point,17));
-    }catch(_){if(mounted)setState(()=>message='GPS indisponível agora. Você pode marcar o ponto manualmente.');}
-    finally{if(mounted)setState(()=>locating=false);}
-  }
-
-  Future<void> _mapCreated(GoogleMapController c) async {
-    controller=c;mapReady=true;
-    await c.animateCamera(CameraUpdate.newLatLngZoom(selected,selected==valeDoCapao?15:17));
+      if(mapReady)mapController.move(point,17);
+    }catch(_){
+      if(mounted)setState(()=>message='GPS indisponível agora. Você pode marcar o ponto manualmente.');
+    }finally{
+      if(mounted)setState(()=>locating=false);
+    }
   }
 
   @override Widget build(BuildContext context)=>Scaffold(
     appBar:AppBar(title:const Text('Onde entregar?')),
     body:Stack(children:[
-      GoogleMap(
-        initialCameraPosition:CameraPosition(target:selected,zoom:15),
-        myLocationEnabled:permissionReady,
-        myLocationButtonEnabled:false,
-        zoomControlsEnabled:false,
-        compassEnabled:true,
-        mapToolbarEnabled:false,
-        onMapCreated:_mapCreated,
-        onTap:(p){setState(()=>selected=p);_save(p);},
-        markers:{Marker(markerId:const MarkerId('delivery'),position:selected,draggable:true,onDragEnd:(p){setState(()=>selected=p);_save(p);})},
+      FlutterMap(
+        mapController:mapController,
+        options:MapOptions(
+          initialCenter:selected,
+          initialZoom:15,
+          minZoom:3,
+          maxZoom:19,
+          onMapReady:(){mapReady=true;mapController.move(selected,selected==valeDoCapao?15:17);},
+          onTap:(_,p){setState(()=>selected=p);_save(p);},
+        ),
+        children:[
+          TileLayer(
+            urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName:'com.zecapao.entrega',
+            maxNativeZoom:19,
+          ),
+          MarkerLayer(markers:[
+            Marker(
+              point:selected,
+              width:56,
+              height:56,
+              child:const Icon(Icons.location_pin,color:brandRed,size:52),
+            )
+          ]),
+          RichAttributionWidget(attributions:[TextSourceAttribution('OpenStreetMap contributors')]),
+        ],
       ),
-      Positioned(left:16,right:16,top:16,child:Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),boxShadow:const [BoxShadow(color:Color(0x22000000),blurRadius:18)]),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Marque o ponto exato',style:TextStyle(fontSize:16,fontWeight:FontWeight.w900)),const SizedBox(height:4),Text(message??'Sua localização foi carregada. Ajuste o marcador se necessário.',style:const TextStyle(color:brandMuted,fontSize:12))]))),
+      Positioned(left:16,right:16,top:16,child:Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),boxShadow:const [BoxShadow(color:Color(0x22000000),blurRadius:18)]),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Marque o ponto exato',style:TextStyle(fontSize:16,fontWeight:FontWeight.w900)),const SizedBox(height:4),Text(message??'Sua localização foi carregada. Toque no mapa para ajustar o ponto.',style:const TextStyle(color:brandMuted,fontSize:12))]))),
       Positioned(right:16,bottom:96,child:FloatingActionButton.small(heroTag:'gps',backgroundColor:Colors.white,foregroundColor:brandRed,onPressed:locating?null:()=>_useCurrentLocation(),child:locating?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.my_location_rounded))),
       Positioned(left:16,right:16,bottom:18,child:FilledButton.icon(onPressed:() async {await _save(selected);if(context.mounted)Navigator.pop(context,DeliveryPoint(selected.latitude,selected.longitude));},icon:const Icon(Icons.check_circle_outline_rounded),label:const Text('CONFIRMAR LOCAL DE ENTREGA'))),
     ])
