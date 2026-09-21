@@ -15,7 +15,7 @@ class ZeEntregadorApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
     title: 'Zé Entregador',
-    theme: ThemeData(useMaterial3: true, colorSchemeSeed: const Color(0xFFF4C430)),
+    theme: ThemeData(useMaterial3: true, scaffoldBackgroundColor: const Color(0xFFF6F0E4), colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFF4C430), primary: const Color(0xFF171717))),
     home: const HomePage(),
   );
 }
@@ -109,28 +109,28 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Zé Entregador', style: TextStyle(fontWeight: FontWeight.bold))),
+    appBar: AppBar(backgroundColor: const Color(0xFF171717), foregroundColor: Colors.white, title: const Row(children:[CircleAvatar(backgroundColor: Color(0xFFF4C430), child: Icon(Icons.sports_motorsports,color:Color(0xFF171717))),SizedBox(width:12),Text('Zé Entregador', style: TextStyle(fontWeight: FontWeight.w900))])),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           const Text('Zé Capão • Entregador', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
           const SizedBox(height: 16),
-          Card(child: Padding(
-            padding: const EdgeInsets.all(18),
+          Container(decoration: BoxDecoration(color: online ? const Color(0xFFF4C430) : const Color(0xFF171717), borderRadius: BorderRadius.circular(28)), child: Padding(
+            padding: const EdgeInsets.all(22),
             child: Column(children: [
-              Icon(online ? Icons.delivery_dining : Icons.power_settings_new, size: 60),
-              Text(online ? 'ONLINE' : 'OFFLINE', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+              Icon(online ? Icons.delivery_dining : Icons.power_settings_new, size: 60, color: online ? const Color(0xFF171717) : const Color(0xFFF4C430)),
+              Text(online ? 'ONLINE' : 'OFFLINE', style: TextStyle(color: online ? const Color(0xFF171717) : Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
               const SizedBox(height: 10),
               FilledButton(onPressed: toggleOnline, child: Text(online ? 'FICAR OFFLINE' : 'FICAR ONLINE')),
             ]),
           )),
           if (online) ...[
             const SizedBox(height: 16),
-            Card(child: Padding(
-              padding: const EdgeInsets.all(18),
+            Container(decoration: BoxDecoration(color: const Color(0xFF171717), borderRadius: BorderRadius.circular(26)), child: Padding(
+              padding: const EdgeInsets.all(20),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Text(labels[step], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(labels[step], style: const TextStyle(color: Color(0xFFF4C430), fontSize: 20, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 8),
                 Text('Zé Capão • corrida demonstrativa\nDistância: ${distanceKm.toStringAsFixed(1).replaceAll('.', ',')} km\nVocê recebe: ${money(earning)}'),
                 const SizedBox(height: 6),
