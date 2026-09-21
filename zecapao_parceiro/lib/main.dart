@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
-void main()=>runApp(const ZeParceiro());
+import 'package:supabase_flutter/supabase_flutter.dart';
+const supabaseUrl='https://yovjbqtazkreruvxoawf.supabase.co';
+const supabasePublishableKey='sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor';
+Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await Supabase.initialize(url:supabaseUrl,publishableKey:supabasePublishableKey); runApp(const ZeParceiro()); }
 const y=Color(0xFFF4C430), dark=Color(0xFF171717), cream=Color(0xFFF6F0E4);
 class ZeParceiro extends StatelessWidget{const ZeParceiro({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Zé Parceiro',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:cream,colorScheme:ColorScheme.fromSeed(seedColor:y,primary:dark)),home:const Home());}
 class Home extends StatefulWidget{const Home({super.key});@override State<Home> createState()=>_Home();}
 class _Home extends State<Home>{
- bool pending=true; int tab=0;
+bool pending=true; int tab=0; RealtimeChannel? channel;
+ @override void initState(){super.initState();_listenOrders();}
+ void _listenOrders(){channel=Supabase.instance.client.channel('ze-parceiro-orders').onPostgresChanges(event:PostgresChangeEvent.insert,schema:'public',table:'orders',callback:(payload){if(mounted)setState(()=>pending=true);}).subscribe();}
+ @override void dispose(){if(channel!=null)Supabase.instance.client.removeChannel(channel!);super.dispose();}
  void decide(bool accept){setState(()=>pending=false);ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(accept?'Pedido aceito • preparar agora':'Pedido recusado')));}
  Widget operation()=>ListView(padding:const EdgeInsets.all(18),children:[
   const Text('Operação',style:TextStyle(fontSize:30,fontWeight:FontWeight.w900)),const Text('Zé Parceiro • Vale do Capão',style:TextStyle(color:Colors.black54)),const SizedBox(height:18),
