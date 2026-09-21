@@ -16,6 +16,7 @@ class ZeEntregadorApp extends StatelessWidget {
     debugShowCheckedModeBanner: false,
     title: 'Zé Entregador',
     theme: ThemeData(useMaterial3: true, scaffoldBackgroundColor: const Color(0xFFF6F0E4), colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFF4C430), primary: const Color(0xFF171717))),
+    filledButtonTheme: FilledButtonThemeData(style: ButtonStyle(minimumSize: const WidgetStatePropertyAll(Size.fromHeight(58)), backgroundColor: const WidgetStatePropertyAll(Color(0xFFF4C430)), foregroundColor: const WidgetStatePropertyAll(Color(0xFF171717)), elevation: const WidgetStatePropertyAll(0), shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 1.1)))),
     home: const HomePage(),
   );
 }
@@ -122,7 +123,7 @@ class _HomePageState extends State<HomePage> {
               Icon(online ? Icons.delivery_dining : Icons.power_settings_new, size: 60, color: online ? const Color(0xFF171717) : const Color(0xFFF4C430)),
               Text(online ? 'ONLINE' : 'OFFLINE', style: TextStyle(color: online ? const Color(0xFF171717) : Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
               const SizedBox(height: 10),
-              FilledButton(onPressed: toggleOnline, child: Text(online ? 'FICAR OFFLINE' : 'FICAR ONLINE')),
+              FilledButton.icon(onPressed: toggleOnline, icon: Icon(online ? Icons.pause_circle_outline : Icons.play_circle_fill), label: Text(online ? 'ENCERRAR TURNO' : 'INICIAR TURNO')),
             ]),
           )),
           if (online) ...[
@@ -136,7 +137,7 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 6),
                 const Text('Regra: R\$ 6,00 até 2 km + R\$ 1,50/km excedente', style: TextStyle(fontSize: 12)),
                 const SizedBox(height: 14),
-                FilledButton(onPressed: step < 5 ? advanceDelivery : null, child: Text(actionLabel)),
+                FilledButton.icon(onPressed: step < 5 ? advanceDelivery : null, icon: Icon(step == 0 ? Icons.arrow_forward_rounded : step == 5 ? Icons.check_circle : Icons.navigation_rounded), label: Text(actionLabel.toUpperCase())),
               ]),
             )),
           ],
@@ -151,7 +152,7 @@ class _HomePageState extends State<HomePage> {
               Text('$deliveries entrega(s) concluída(s)'),
               const Divider(height: 28),
               ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.pix), title: const Text('Chave Pix'), subtitle: Text(pixKey.isEmpty ? 'Não cadastrada' : pixKey), trailing: TextButton(onPressed: savePix, child: Text(pixKey.isEmpty ? 'CADASTRAR' : 'ALTERAR'))),
-              FilledButton.icon(onPressed: requestWithdrawal, icon: const Icon(Icons.payments_outlined), label: const Text('SOLICITAR SAQUE VIA PIX')),
+              FilledButton.icon(onPressed: requestWithdrawal, icon: const Icon(Icons.pix), label: const Text('SOLICITAR SAQUE')),
             ]),
           )),
           if (ledger.isNotEmpty) ...[
