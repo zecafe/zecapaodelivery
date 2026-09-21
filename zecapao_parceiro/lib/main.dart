@@ -5,7 +5,44 @@ const supabasePublishableKey='sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor';
 Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await Supabase.initialize(url:supabaseUrl,publishableKey:supabasePublishableKey); runApp(const ZeParceiro()); }
 const y=Color(0xFFF4C430), dark=Color(0xFF171717), cream=Color(0xFFF6F0E4);
 class ZeParceiro extends StatelessWidget{const ZeParceiro({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Zé Parceiro',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:cream,colorScheme:ColorScheme.fromSeed(seedColor:y,primary:dark)),home:const Home());}
-class ZePartnerButton extends StatelessWidget{final String label;final IconData icon;final VoidCallback? onTap;final bool danger;const ZePartnerButton({super.key,required this.label,required this.icon,required this.onTap,this.danger=false});@override Widget build(BuildContext context)=>Semantics(button:true,enabled:onTap!=null,label:label,child:Material(color:Colors.transparent,child:InkWell(onTap:onTap,borderRadius:BorderRadius.circular(16),child:Ink(height:60,decoration:BoxDecoration(color:danger?Colors.transparent:y,borderRadius:BorderRadius.circular(16),border:Border.all(color:danger?Colors.white54:dark,width:2)),child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,color:danger?Colors.white:dark),const SizedBox(width:10),Text(label,style:TextStyle(color:danger?Colors.white:dark,fontWeight:FontWeight.w900,letterSpacing:1.1))]))))));}
+class ZePartnerButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+  final bool danger;
+  const ZePartnerButton({super.key,required this.label,required this.icon,required this.onTap,this.danger=false});
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button:true,
+      enabled:onTap!=null,
+      label:label,
+      child:Material(
+        color:Colors.transparent,
+        child:InkWell(
+          onTap:onTap,
+          borderRadius:BorderRadius.circular(16),
+          child:Ink(
+            height:60,
+            decoration:BoxDecoration(
+              color:danger?Colors.transparent:y,
+              borderRadius:BorderRadius.circular(16),
+              border:Border.all(color:danger?Colors.white54:dark,width:2),
+            ),
+            child:Row(
+              mainAxisAlignment:MainAxisAlignment.center,
+              children:[
+                Icon(icon,color:danger?Colors.white:dark),
+                const SizedBox(width:10),
+                Text(label,style:TextStyle(color:danger?Colors.white:dark,fontWeight:FontWeight.w900,letterSpacing:1.1)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 class Home extends StatefulWidget{const Home({super.key});@override State<Home> createState()=>_Home();}
 class _Home extends State<Home>{
 bool pending=false,loading=true; int tab=0; RealtimeChannel? channel; Map<String,dynamic>? order; String? storeId,storeName;
