@@ -1,12 +1,13 @@
 name: ze_parceiro
 description: Ze Parceiro MVP - operacao e gestao do estabelecimento
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.2.0+2
 environment:
   sdk: '>=3.10.0 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter
+  supabase_flutter: ^2.15.4
 dev_dependencies:
   flutter_test:
     sdk: flutter
