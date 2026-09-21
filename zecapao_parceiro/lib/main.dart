@@ -5,6 +5,7 @@ const supabasePublishableKey='sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor';
 Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await Supabase.initialize(url:supabaseUrl,publishableKey:supabasePublishableKey); runApp(const ZeParceiro()); }
 const y=Color(0xFFF4C430), dark=Color(0xFF171717), cream=Color(0xFFF6F0E4);
 class ZeParceiro extends StatelessWidget{const ZeParceiro({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Zé Parceiro',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:cream,colorScheme:ColorScheme.fromSeed(seedColor:y,primary:dark)),home:const Home());}
+class ZePartnerButton extends StatelessWidget{final String label;final IconData icon;final VoidCallback? onTap;final bool danger;const ZePartnerButton({super.key,required this.label,required this.icon,required this.onTap,this.danger=false});@override Widget build(BuildContext context)=>Semantics(button:true,enabled:onTap!=null,label:label,child:Material(color:Colors.transparent,child:InkWell(onTap:onTap,borderRadius:BorderRadius.circular(16),child:Ink(height:60,decoration:BoxDecoration(color:danger?Colors.transparent:y,borderRadius:BorderRadius.circular(16),border:Border.all(color:danger?Colors.white54:dark,width:2)),child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,color:danger?Colors.white:dark),const SizedBox(width:10),Text(label,style:TextStyle(color:danger?Colors.white:dark,fontWeight:FontWeight.w900,letterSpacing:1.1))]))))));}
 class Home extends StatefulWidget{const Home({super.key});@override State<Home> createState()=>_Home();}
 class _Home extends State<Home>{
 bool pending=false,loading=true; int tab=0; RealtimeChannel? channel; Map<String,dynamic>? order; String? storeId,storeName;
@@ -21,8 +22,8 @@ bool pending=false,loading=true; int tab=0; RealtimeChannel? channel; Map<String
    Text('#${(order?['id']?.toString()??'PEDIDO').substring(0,8).toUpperCase()} • ${storeName??'Minha loja'}',style:const TextStyle(color:Colors.white,fontSize:23,fontWeight:FontWeight.w900)),
    Text('${((order?['order_items'] as List?)??[]).length} itens • R\$ ${((order?['total'] as num?)??0).toStringAsFixed(2).replaceAll('.',',')} • ${order?['payment_method']??''}',style:const TextStyle(color:Colors.white70)),const SizedBox(height:8),
    const Text('TUM-TIM  •  “Zé chegou!”',style:TextStyle(color:y,fontWeight:FontWeight.bold)),const SizedBox(height:20),
-   FilledButton(style:FilledButton.styleFrom(backgroundColor:y,foregroundColor:dark,minimumSize:const Size.fromHeight(58)),onPressed:()=>decide(true),child:const Text('ACEITAR PEDIDO',style:TextStyle(fontWeight:FontWeight.w900))),
-   const SizedBox(height:8),OutlinedButton(style:OutlinedButton.styleFrom(foregroundColor:Colors.white,side:const BorderSide(color:Colors.white30),minimumSize:const Size.fromHeight(52)),onPressed:()=>decide(false),child:const Text('RECUSAR')),
+   ZePartnerButton(label:'ACEITAR PEDIDO',icon:Icons.check_circle_rounded,onTap:()=>decide(true)),
+   const SizedBox(height:8),ZePartnerButton(label:'RECUSAR',icon:Icons.close_rounded,onTap:()=>decide(false),danger:true),
   ]) else const Card(child:Padding(padding:EdgeInsets.all(24),child:Column(children:[Icon(Icons.check_circle,size:48,color:Colors.green),SizedBox(height:10),Text('Nenhum pedido aguardando decisão',style:TextStyle(fontWeight:FontWeight.w800))]))),
   const SizedBox(height:18),const Row(children:[Expanded(child:Stat('0','Em preparo')),SizedBox(width:10),Expanded(child:Stat('0','Prontos'))]),
  ]);
