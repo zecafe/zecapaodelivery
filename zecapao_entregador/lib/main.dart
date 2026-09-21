@@ -15,8 +15,7 @@ class ZeEntregadorApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
     title: 'Zé Entregador',
-    theme: ThemeData(useMaterial3: true, scaffoldBackgroundColor: const Color(0xFFF6F0E4), colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFF4C430), primary: const Color(0xFF171717))),
-    filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(58), backgroundColor: const Color(0xFFF4C430), foregroundColor: const Color(0xFF171717), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 1.1))),
+    theme: ThemeData(useMaterial3: true, scaffoldBackgroundColor: const Color(0xFFF6F0E4), colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFF4C430), primary: const Color(0xFF171717)), filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(58), backgroundColor: const Color(0xFFF4C430), foregroundColor: const Color(0xFF171717), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 1.1)))),
     home: const HomePage(),
   );
 }
