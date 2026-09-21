@@ -114,7 +114,7 @@ class _HomePageState extends State<HomePage> {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Text('Painel do entregador', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+          const Text('Zé Capão • Entregador', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
           const SizedBox(height: 16),
           Card(child: Padding(
             padding: const EdgeInsets.all(18),
