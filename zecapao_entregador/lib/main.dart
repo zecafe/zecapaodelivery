@@ -20,6 +20,12 @@ class ZeEntregadorApp extends StatelessWidget {
   );
 }
 
+class ZeActionButton extends StatelessWidget {
+  final String label; final IconData icon; final VoidCallback? onPressed;
+  const ZeActionButton({super.key,required this.label,required this.icon,required this.onPressed});
+  @override Widget build(BuildContext context)=>Material(color:Colors.transparent,child:InkWell(onTap:onPressed,borderRadius:BorderRadius.circular(16),child:Ink(decoration:BoxDecoration(color:onPressed==null?const Color(0xFFBDB7AA):const Color(0xFFF4C430),borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFF171717),width:2)),child:Container(height:62,padding:const EdgeInsets.symmetric(horizontal:18),child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,color:const Color(0xFF171717)),const SizedBox(width:10),Flexible(child:Text(label,textAlign:TextAlign.center,style:const TextStyle(color:Color(0xFF171717),fontSize:14,fontWeight:FontWeight.w900,letterSpacing:1.2)))])))));
+}
+
 class WalletEntry {
   final String title;
   final double amount;
@@ -122,7 +128,7 @@ class _HomePageState extends State<HomePage> {
               Icon(online ? Icons.delivery_dining : Icons.power_settings_new, size: 60, color: online ? const Color(0xFF171717) : const Color(0xFFF4C430)),
               Text(online ? 'ONLINE' : 'OFFLINE', style: TextStyle(color: online ? const Color(0xFF171717) : Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
               const SizedBox(height: 10),
-              FilledButton.icon(onPressed: toggleOnline, icon: Icon(online ? Icons.pause_circle_outline : Icons.play_circle_fill), label: Text(online ? 'ENCERRAR TURNO' : 'INICIAR TURNO')),
+              ZeActionButton(onPressed: toggleOnline, icon: online ? Icons.pause_circle_outline : Icons.play_circle_fill, label: online ? 'ENCERRAR TURNO' : 'INICIAR TURNO'),
             ]),
           )),
           if (online) ...[
@@ -136,7 +142,7 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 6),
                 const Text('Regra: R\$ 6,00 até 2 km + R\$ 1,50/km excedente', style: TextStyle(fontSize: 12)),
                 const SizedBox(height: 14),
-                FilledButton.icon(onPressed: step < 5 ? advanceDelivery : null, icon: Icon(step == 0 ? Icons.arrow_forward_rounded : step == 5 ? Icons.check_circle : Icons.navigation_rounded), label: Text(actionLabel.toUpperCase())),
+                ZeActionButton(onPressed: step < 5 ? advanceDelivery : null, icon: step == 0 ? Icons.arrow_forward_rounded : step == 5 ? Icons.check_circle : Icons.navigation_rounded, label: actionLabel.toUpperCase()),
               ]),
             )),
           ],
