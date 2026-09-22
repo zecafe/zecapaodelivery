@@ -4,7 +4,12 @@ const supabaseUrl='https://yovjbqtazkreruvxoawf.supabase.co';
 const supabasePublishableKey='sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor';
 Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await Supabase.initialize(url:supabaseUrl,publishableKey:supabasePublishableKey); runApp(const ZeParceiro()); }
 const y=Color(0xFFF4C430), dark=Color(0xFF171717), cream=Color(0xFFF6F0E4);
-class ZeParceiro extends StatelessWidget{const ZeParceiro({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Zé Parceiro',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:cream,colorScheme:ColorScheme.fromSeed(seedColor:y,primary:dark)),home:const Home());}
+class ZeParceiro extends StatelessWidget{const ZeParceiro({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Zé Parceiro',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:cream,colorScheme:ColorScheme.fromSeed(seedColor:y,primary:dark)),home:const AuthGate());}
+class AuthGate extends StatefulWidget{const AuthGate({super.key});@override State<AuthGate> createState()=>_AuthGate();}
+class _AuthGate extends State<AuthGate>{late final Stream<AuthState> auth;@override void initState(){super.initState();auth=Supabase.instance.client.auth.onAuthStateChange;}@override Widget build(BuildContext c)=>StreamBuilder<AuthState>(stream:auth,builder:(c,s)=>Supabase.instance.client.auth.currentUser==null?const LoginPage():const Home());}
+class LoginPage extends StatefulWidget{const LoginPage({super.key});@override State<LoginPage> createState()=>_LoginPage();}
+class _LoginPage extends State<LoginPage>{final email=TextEditingController(text:'jcasjunior@hotmail.com'),password=TextEditingController();bool busy=false;String? error;@override void dispose(){email.dispose();password.dispose();super.dispose();}Future<void> login()async{setState((){busy=true;error=null;});try{await Supabase.instance.client.auth.signInWithPassword(email:email.text.trim(),password:password.text);if(mounted)setState(()=>busy=false);}on AuthException catch(e){if(mounted)setState((){busy=false;error=e.message;});}catch(_){if(mounted)setState((){busy=false;error='Não foi possível entrar agora.';});}}@override Widget build(BuildContext c)=>Scaffold(body:SafeArea(child:Center(child:SingleChildScrollView(padding:const EdgeInsets.all(24),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:460),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[const CircleAvatar(radius:34,backgroundColor:y,child:Icon(Icons.storefront,color:dark,size:34)),const SizedBox(height:20),const Text('Zé Parceiro',textAlign:TextAlign.center,style:TextStyle(fontSize:32,fontWeight:FontWeight.w900)),const SizedBox(height:6),const Text('Entre com a conta vinculada ao seu estabelecimento.',textAlign:TextAlign.center),const SizedBox(height:26),TextField(controller:email,keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'E-mail',border:OutlineInputBorder())),const SizedBox(height:12),TextField(controller:password,obscureText:true,onSubmitted:(_)=>busy?null:login(),decoration:const InputDecoration(labelText:'Senha',border:OutlineInputBorder())),if(error!=null)...[const SizedBox(height:10),Text(error!,style:const TextStyle(color:Colors.red,fontWeight:FontWeight.w700))],const SizedBox(height:16),ZePartnerButton(label:busy?'ENTRANDO...':'ENTRAR',icon:Icons.login_rounded,onTap:busy?null:login)]))))));}}
+
 class ZePartnerButton extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -45,9 +50,9 @@ class ZePartnerButton extends StatelessWidget {
 }
 class Home extends StatefulWidget{const Home({super.key});@override State<Home> createState()=>_Home();}
 class _Home extends State<Home>{
-bool pending=false,loading=true; int tab=0; RealtimeChannel? channel; Map<String,dynamic>? order; String? storeId,storeName;
+bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel? channel; Map<String,dynamic>? order; String? storeId,storeName;
  @override void initState(){super.initState();_boot();}
- Future<void> _boot()async{final sb=Supabase.instance.client;final user=sb.auth.currentUser;if(user==null){if(mounted)setState(()=>loading=false);return;}final member=await sb.from('store_members').select('store_id,stores(name)').eq('user_id',user.id).limit(1).maybeSingle();storeId=member?['store_id']?.toString();storeName=(member?['stores'] as Map?)?['name']?.toString();if(storeId!=null){await _loadPending();_listenOrders();}if(mounted)setState(()=>loading=false);}
+ Future<void> _boot()async{final sb=Supabase.instance.client;final user=sb.auth.currentUser;if(user==null){if(mounted)setState(()=>loading=false);return;}final member=await sb.from('store_members').select('store_id,stores(name)').eq('user_id',user.id).limit(1).maybeSingle();storeId=member?['store_id']?.toString();storeName=(member?['stores'] as Map?)?['name']?.toString();if(storeId!=null){await _loadPending();_listenOrders();}else{accessError='Esta conta ainda não está vinculada a um estabelecimento.';}if(mounted)setState(()=>loading=false);}
  Future<void> _loadPending()async{if(storeId==null)return;final data=await Supabase.instance.client.from('orders').select('*,order_items(*)').eq('store_id',storeId!).eq('status','pending').order('created_at').limit(1).maybeSingle();if(mounted)setState((){order=data;pending=data!=null;});}
  void _listenOrders(){channel=Supabase.instance.client.channel('ze-parceiro-$storeId').onPostgresChanges(event:PostgresChangeEvent.all,schema:'public',table:'orders',filter:PostgresChangeFilter(type:PostgresChangeFilterType.eq,column:'store_id',value:storeId!),callback:(payload)=>_loadPending()).subscribe();}
  @override void dispose(){if(channel!=null)Supabase.instance.client.removeChannel(channel!);super.dispose();}
@@ -62,7 +67,8 @@ bool pending=false,loading=true; int tab=0; RealtimeChannel? channel; Map<String
    padding:const EdgeInsets.all(18),
    children:[
     const Text('Operação',style:TextStyle(fontSize:30,fontWeight:FontWeight.w900)),
-    const Text('Zé Parceiro • Vale do Capão',style:TextStyle(color:Colors.black54)),
+    Text(storeName!=null?'$storeName • Vale do Capão':'Zé Parceiro • Vale do Capão',style:const TextStyle(color:Colors.black54)),
+    if(accessError!=null)...[const SizedBox(height:12),Card(child:Padding(padding:const EdgeInsets.all(16),child:Text(accessError!,style:const TextStyle(fontWeight:FontWeight.w800))))],
     const SizedBox(height:18),
     if(pending)
      Container(
