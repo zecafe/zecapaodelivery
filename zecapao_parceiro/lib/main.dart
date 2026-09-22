@@ -26,6 +26,32 @@ class _LoginPage extends State<LoginPage> {
     super.dispose();
   }
 
+  Future<void> resetPassword() async {
+    final address = email.text.trim();
+    if (address.isEmpty) {
+      setState(() => error = 'Informe seu e-mail primeiro.');
+      return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(address);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enviamos o acesso para seu e-mail. Confira também o spam.')),
+        );
+      }
+    } on AuthException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } catch (_) {
+      if (mounted) setState(() => error = 'Não foi possível enviar o acesso agora.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> login() async {
     setState(() {
       busy = true;
@@ -106,6 +132,11 @@ class _LoginPage extends State<LoginPage> {
                     label: busy ? 'ENTRANDO...' : 'ENTRAR',
                     icon: Icons.login_rounded,
                     onTap: busy ? null : login,
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: busy ? null : resetPassword,
+                    child: const Text('PRIMEIRO ACESSO / ESQUECI MINHA SENHA'),
                   ),
                 ],
               ),
