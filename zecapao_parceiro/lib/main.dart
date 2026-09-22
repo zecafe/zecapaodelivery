@@ -67,68 +67,22 @@ bool pending=false,loading=true; int tab=0; RealtimeChannel? channel; Map<String
  Widget management()=>ListView(padding:const EdgeInsets.all(18),children:[const Text('Gestão',style:TextStyle(fontSize:30,fontWeight:FontWeight.w900)),const SizedBox(height:18),const Card(child:ListTile(leading:CircleAvatar(backgroundColor:y,child:Icon(Icons.calculate,color:dark)),title:Text('CMV e fichas técnicas',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('Insumos, custos, margem e preço ideal'),trailing:Icon(Icons.chevron_right))),const Card(child:ListTile(leading:CircleAvatar(backgroundColor:y,child:Icon(Icons.inventory_2,color:dark)),title:Text('Estoque',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('Entradas, consumo e alertas'),trailing:Icon(Icons.chevron_right)))]);
  @override Widget build(BuildContext c){if(loading)return const Scaffold(body:Center(child:CircularProgressIndicator()));return Scaffold(appBar:AppBar(backgroundColor:dark,foregroundColor:Colors.white,title:const Row(children:[CircleAvatar(backgroundColor:y,child:Icon(Icons.storefront,color:dark)),SizedBox(width:10),Text('Zé Parceiro',style:TextStyle(fontWeight:FontWeight.w900))])),body:SafeArea(child:tab==0?operation():management()),bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(i)=>setState(()=>tab=i),destinations:const[NavigationDestination(icon:Icon(Icons.receipt_long),label:'Pedidos'),NavigationDestination(icon:Icon(Icons.analytics_outlined),label:'Gestão')]));}
 }
-class Stat extends StatelessWidget{final String n,l;const Stat(this.n,this.l,{super.key});@override Widget build(BuildContext c)=>Card(child:Padding(padding:const EdgeInsets.all(18),child:Column(children:[Text(n,style:const TextStyle(fontSize:28,fontWeight:FontWeight.w900)),Text(l)])));}  Widget operation() {
-    final items = (order?['order_items'] as List?) ?? const [];
-    final rawId = order?['id']?.toString() ?? 'PEDIDO';
-    final shortId = rawId.length > 8 ? rawId.substring(0, 8) : rawId;
-    final total = ((order?['total'] as num?) ?? 0).toStringAsFixed(2).replaceAll('.', ',');
-    final payment = order?['payment_method']?.toString() ?? '';
-
-    return ListView(
-      padding: const EdgeInsets.all(18),
-      children: [
-        const Text('Operação', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
-        const Text('Zé Parceiro • Vale do Capão', style: TextStyle(color: Colors.black54)),
-        const SizedBox(height: 18),
-        if (pending)
-          Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(color: dark, borderRadius: BorderRadius.circular(28)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.notifications_active, color: y),
-                    SizedBox(width: 10),
-                    Text('NOVO PEDIDO', style: TextStyle(color: y, fontWeight: FontWeight.w900, letterSpacing: 1.3)),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text('#${shortId.toUpperCase()} • ${storeName ?? 'Minha loja'}', style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900)),
-                Text('${items.length} itens • R\$ $total • $payment', style: const TextStyle(color: Colors.white70)),
-                const SizedBox(height: 8),
-                const Text('TUM-TIM  •  “Zé chegou!”', style: TextStyle(color: y, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 20),
-                ZePartnerButton(label: 'ACEITAR PEDIDO', icon: Icons.check_circle_rounded, onTap: () => decide(true)),
-                const SizedBox(height: 8),
-                ZePartnerButton(label: 'RECUSAR', icon: Icons.close_rounded, onTap: () => decide(false), danger: true),
-              ],
-            ),
-          )
-        else
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  Icon(Icons.check_circle, size: 48, color: Colors.green),
-                  SizedBox(height: 10),
-                  Text('Nenhum pedido aguardando decisão', style: TextStyle(fontWeight: FontWeight.w800)),
-                ],
-              ),
-            ),
-          ),
-        const SizedBox(height: 18),
-        const Row(
+class Stat extends StatelessWidget {
+  final String n;
+  final String l;
+  const Stat(this.n, this.l, {super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
           children: [
-            Expanded(child: Stat('0', 'Em preparo')),
-            SizedBox(width: 10),
-            Expanded(child: Stat('0', 'Prontos')),
+            Text(n, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+            Text(l),
           ],
         ),
-      ],
+      ),
     );
   }
-
-
+}
