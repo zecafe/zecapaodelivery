@@ -26,6 +26,41 @@ class _LoginPage extends State<LoginPage> {
     super.dispose();
   }
 
+  Future<void> firstAccess() async {
+    final address = email.text.trim();
+    final pass = password.text;
+    if (address.isEmpty || pass.length < 6) {
+      setState(() => error = 'Informe o e-mail e escolha uma senha com pelo menos 6 caracteres.');
+      return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final response = await Supabase.instance.client.auth.signUp(
+        email: address,
+        password: pass,
+      );
+      if (!mounted) return;
+      if (response.session != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Conta criada. Primeiro acesso concluído.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Conta criada. Confira seu e-mail para confirmar o cadastro.')),
+        );
+      }
+    } on AuthException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } catch (_) {
+      if (mounted) setState(() => error = 'Não foi possível criar o acesso agora.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> resetPassword() async {
     final address = email.text.trim();
     if (address.isEmpty) {
@@ -135,8 +170,12 @@ class _LoginPage extends State<LoginPage> {
                   ),
                   const SizedBox(height: 8),
                   TextButton(
+                    onPressed: busy ? null : firstAccess,
+                    child: const Text('PRIMEIRO ACESSO'),
+                  ),
+                  TextButton(
                     onPressed: busy ? null : resetPassword,
-                    child: const Text('PRIMEIRO ACESSO / ESQUECI MINHA SENHA'),
+                    child: const Text('ESQUECI MINHA SENHA'),
                   ),
                 ],
               ),
