@@ -336,7 +336,34 @@ class Home extends StatefulWidget{const Home({super.key});@override State<Home> 
 class _Home extends State<Home>{
 bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel? channel; Map<String,dynamic>? order; String? storeId,storeName;
  @override void initState(){super.initState();_boot();}
- Future<void> _boot()async{final sb=Supabase.instance.client;final user=sb.auth.currentUser;if(user==null){if(mounted)setState(()=>loading=false);return;}final member=await sb.from('store_members').select('store_id,stores(name)').eq('user_id',user.id).limit(1).maybeSingle();storeId=member?['store_id']?.toString();storeName=(member?['stores'] as Map?)?['name']?.toString();if(storeId!=null){await _loadPending();_listenOrders();}else{accessError='Esta conta ainda não está vinculada a um estabelecimento.';}if(mounted)setState(()=>loading=false);}
+ Future<void> _boot() async {
+  final sb = Supabase.instance.client;
+  final user = sb.auth.currentUser;
+  if (user == null) {
+    if (mounted) setState(() => loading = false);
+    return;
+  }
+  try {
+    var member = await sb.from('store_members').select('store_id,stores(name)').eq('user_id', user.id).limit(1).maybeSingle();
+    if (member == null) {
+      try {
+        await sb.rpc('claim_zecafe_partner');
+        member = await sb.from('store_members').select('store_id,stores(name)').eq('user_id', user.id).limit(1).maybeSingle();
+      } catch (_) {}
+    }
+    storeId = member?['store_id']?.toString();
+    storeName = (member?['stores'] as Map?)?['name']?.toString();
+    if (storeId != null) {
+      await _loadPending();
+      _listenOrders();
+    } else {
+      accessError = 'Esta conta ainda não está vinculada a um estabelecimento.';
+    }
+  } catch (_) {
+    accessError = 'Não foi possível carregar o estabelecimento. Entre novamente.';
+  }
+  if (mounted) setState(() => loading = false);
+}
  Future<void> _loadPending()async{if(storeId==null)return;final data=await Supabase.instance.client.from('orders').select('*,order_items(*)').eq('store_id',storeId!).eq('status','pending').order('created_at').limit(1).maybeSingle();if(mounted)setState((){order=data;pending=data!=null;});}
  void _listenOrders(){channel=Supabase.instance.client.channel('ze-parceiro-$storeId').onPostgresChanges(event:PostgresChangeEvent.all,schema:'public',table:'orders',filter:PostgresChangeFilter(type:PostgresChangeFilterType.eq,column:'store_id',value:storeId!),callback:(payload)=>_loadPending()).subscribe();}
  @override void dispose(){if(channel!=null)Supabase.instance.client.removeChannel(channel!);super.dispose();}
