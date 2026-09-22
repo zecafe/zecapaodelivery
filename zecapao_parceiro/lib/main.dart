@@ -6,7 +6,110 @@ Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await Sup
 const y=Color(0xFFF4C430), dark=Color(0xFF171717), cream=Color(0xFFF6F0E4);
 class ZeParceiro extends StatelessWidget{const ZeParceiro({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Zé Parceiro',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:cream,colorScheme:ColorScheme.fromSeed(seedColor:y,primary:dark)),home:const AuthGate());}
 class AuthGate extends StatefulWidget{const AuthGate({super.key});@override State<AuthGate> createState()=>_AuthGate();}
-class _AuthGate extends State<AuthGate>{late final Stream<AuthState> auth;@override void initState(){super.initState();auth=Supabase.instance.client.auth.onAuthStateChange;}@override Widget build(BuildContext c)=>StreamBuilder<AuthState>(stream:auth,builder:(c,s)=>Supabase.instance.client.auth.currentUser==null?const LoginPage():const Home());}
+class _AuthGate extends State<AuthGate> {
+  late final Stream<AuthState> auth;
+  bool recovery = false;
+
+  @override
+  void initState() {
+    super.initState();
+    auth = Supabase.instance.client.auth.onAuthStateChange;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<AuthState>(
+      stream: auth,
+      builder: (context, snapshot) {
+        final event = snapshot.data?.event;
+        if (event == AuthChangeEvent.passwordRecovery) recovery = true;
+        if (recovery) return ResetPasswordPage(onDone: () => setState(() => recovery = false));
+        return Supabase.instance.client.auth.currentUser == null
+            ? const LoginPage()
+            : const Home();
+      },
+    );
+  }
+}
+
+class ResetPasswordPage extends StatefulWidget {
+  final VoidCallback onDone;
+  const ResetPasswordPage({super.key, required this.onDone});
+
+  @override
+  State<ResetPasswordPage> createState() => _ResetPasswordPageState();
+}
+
+class _ResetPasswordPageState extends State<ResetPasswordPage> {
+  final password = TextEditingController();
+  final confirm = TextEditingController();
+  bool busy = false;
+  String? error;
+
+  @override
+  void dispose() {
+    password.dispose();
+    confirm.dispose();
+    super.dispose();
+  }
+
+  Future<void> save() async {
+    if (password.text.length < 6) {
+      setState(() => error = 'Use uma senha com pelo menos 6 caracteres.');
+      return;
+    }
+    if (password.text != confirm.text) {
+      setState(() => error = 'As senhas não são iguais.');
+      return;
+    }
+    setState(() { busy = true; error = null; });
+    try {
+      await Supabase.instance.client.auth.updateUser(
+        UserAttributes(password: password.text),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Senha atualizada com sucesso.')),
+      );
+      widget.onDone();
+    } on AuthException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const CircleAvatar(radius: 34, backgroundColor: y, child: Icon(Icons.lock_reset, color: dark, size: 34)),
+                const SizedBox(height: 20),
+                const Text('Criar nova senha', textAlign: TextAlign.center, style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 8),
+                const Text('Digite a nova senha do Zé Parceiro.', textAlign: TextAlign.center),
+                const SizedBox(height: 24),
+                TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Nova senha', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: confirm, obscureText: true, decoration: const InputDecoration(labelText: 'Confirmar nova senha', border: OutlineInputBorder())),
+                if (error != null) ...[const SizedBox(height: 10), Text(error!, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w700))],
+                const SizedBox(height: 16),
+                ZePartnerButton(label: busy ? 'SALVANDO...' : 'SALVAR NOVA SENHA', icon: Icons.check_circle_rounded, onTap: busy ? null : save),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
   @override
