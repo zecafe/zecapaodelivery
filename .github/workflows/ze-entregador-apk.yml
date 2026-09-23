@@ -25,16 +25,13 @@ jobs:
           cp zecapao_entregador/pubspec.yaml /tmp/ze_entregador/pubspec.yaml
           cp zecapao_entregador/lib/main.dart /tmp/ze_entregador/lib/main.dart
           cp zecapao_entregador/assets/branding/entregador_icon.png /tmp/entregador_icon.png
-          python3 - <<'PY'
-          from PIL import Image
-          from pathlib import Path
-          src=Image.open('/tmp/entregador_icon.png').convert('RGBA')
-          sizes={'mdpi':48,'hdpi':72,'xhdpi':96,'xxhdpi':144,'xxxhdpi':192}
-          for density,size in sizes.items():
-              out=Path('/tmp/ze_entregador/android/app/src/main/res')/f'mipmap-{density}'/'ic_launcher.png'
-              out.parent.mkdir(parents=True,exist_ok=True)
-              src.resize((size,size),Image.Resampling.LANCZOS).save(out)
-          PY
+          sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+          for spec in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            density="${spec%%:*}"
+            size="${spec##*:}"
+            mkdir -p "/tmp/ze_entregador/android/app/src/main/res/mipmap-$density"
+            convert /tmp/entregador_icon.png -resize "${size}x${size}!" "/tmp/ze_entregador/android/app/src/main/res/mipmap-$density/ic_launcher.png"
+          done
           cd /tmp/ze_entregador
           flutter pub get
           flutter build apk --debug
