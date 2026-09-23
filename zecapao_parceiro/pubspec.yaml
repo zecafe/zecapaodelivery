@@ -11,6 +11,7 @@ dependencies:
   audioplayers: ^6.5.1
   firebase_core: ^4.2.0
   firebase_messaging: ^16.0.3
+  flutter_local_notifications: ^19.4.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
