@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:async';
 const supabaseUrl='https://yovjbqtazkreruvxoawf.supabase.co';
 const supabasePublishableKey='sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor';
-Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await Supabase.initialize(url:supabaseUrl,publishableKey:supabasePublishableKey); runApp(const ZeParceiro()); }
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  await Supabase.initialize(url:supabaseUrl,publishableKey:supabasePublishableKey);
+  runApp(const ZeParceiro());
+}
 const y=Color(0xFFF9A900), dark=Color(0xFF171717), cream=Color(0xFFFFF7E6);
 class ZeParceiro extends StatelessWidget{const ZeParceiro({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Parceiro Capão Delivery',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:cream,colorScheme:ColorScheme.fromSeed(seedColor:y,primary:dark)),home:const AuthGate());}
 class AuthGate extends StatefulWidget{const AuthGate({super.key});@override State<AuthGate> createState()=>_AuthGate();}
@@ -356,6 +368,7 @@ bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel
     storeId = member?['store_id']?.toString();
     storeName = (member?['stores'] as Map?)?['name']?.toString();
     if (storeId != null) {
+      await _configurePush();
       await _loadPending();
       await _loadActive();
       await _loadDeliveryStates();
@@ -370,6 +383,21 @@ bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel
   }
   if (mounted) setState(() => loading = false);
 }
+ Future<void> _configurePush() async {
+  try {
+    final messaging=FirebaseMessaging.instance;
+    await messaging.requestPermission(alert:true,badge:true,sound:true);
+    final token=await messaging.getToken();
+    if(token!=null) await _registerPushToken(token);
+    messaging.onTokenRefresh.listen(_registerPushToken);
+    FirebaseMessaging.onMessage.listen((message){_syncOperation();});
+    FirebaseMessaging.onMessageOpenedApp.listen((message){_syncOperation();});
+  } catch (_) {}
+ }
+ Future<void> _registerPushToken(String token) async {
+  if(storeId==null)return;
+  try { await Supabase.instance.client.rpc('register_partner_push_token',params:{'p_store_id':storeId,'p_token':token}); } catch (_) {}
+ }
  Future<void> _playTumTim() async { try { await alertPlayer.stop(); await alertPlayer.play(AssetSource('audio/ze_tum_tim_v1.wav')); } catch (_) {} }
  void _stopAlert(){alertTimer?.cancel();alertTimer=null;alertedOrderId=null;alertPlayer.stop();}
  void _alertFor(Map<String,dynamic>? data){final id=data?['id']?.toString();if(id==null){_stopAlert();return;}if(alertedOrderId==id)return;_stopAlert();alertedOrderId=id;_playTumTim();alertTimer=Timer.periodic(const Duration(seconds:20),(_){if(pending&&order?['id']?.toString()==id)_playTumTim();else _stopAlert();});}
