@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:async';
 const supabaseUrl='https://yovjbqtazkreruvxoawf.supabase.co';
 const supabasePublishableKey='sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor';
@@ -14,6 +15,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  const channel=AndroidNotificationChannel('capao_orders_v1','Pedidos',description:'Alertas de novos pedidos',importance:Importance.max,playSound:true,sound:RawResourceAndroidNotificationSound('ze_tum_tim_v1'),enableVibration:true);
+  final localNotifications=FlutterLocalNotificationsPlugin();
+  await localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
   await Supabase.initialize(url:supabaseUrl,publishableKey:supabasePublishableKey);
   runApp(const ZeParceiro());
 }
