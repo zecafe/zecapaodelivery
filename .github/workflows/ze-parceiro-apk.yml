@@ -22,8 +22,11 @@ jobs:
           flutter create --platforms=android --org com.zecapao /tmp/ze_parceiro
           cp zecapao_parceiro/pubspec.yaml /tmp/ze_parceiro/pubspec.yaml
           cp zecapao_parceiro/lib/main.dart /tmp/ze_parceiro/lib/main.dart
+          cp zecapao_parceiro/android/google-services.json /tmp/ze_parceiro/android/app/google-services.json
           mkdir -p /tmp/ze_parceiro/assets/audio
           cp zecapao_parceiro/assets/audio/ze_tum_tim_v1.wav /tmp/ze_parceiro/assets/audio/ze_tum_tim_v1.wav
+          mkdir -p /tmp/ze_parceiro/android/app/src/main/res/raw
+          cp zecapao_parceiro/assets/audio/ze_tum_tim_v1.wav /tmp/ze_parceiro/android/app/src/main/res/raw/ze_tum_tim_v1.wav
           cp zecapao_parceiro/assets/audio/branding/parceiro_icon.png /tmp/parceiro_icon.png
           sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
           for spec in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
