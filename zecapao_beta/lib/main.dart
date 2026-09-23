@@ -91,6 +91,8 @@ class Repo {
     required String payment,
     required String notes,
     required List<CartLine> items,
+    double? latitude,
+    double? longitude,
   }) async {
     final result = await client.rpc('create_guest_order', params: {
       'p_store_id': store.id,
@@ -101,7 +103,9 @@ class Repo {
       'p_notes': notes,
       'p_items': items.map((e) => {'product_id': e.product.id, 'quantity': e.quantity}).toList(),
     });
-    return result.toString();
+    final orderId=result.toString();
+    if(latitude!=null&&longitude!=null){await client.rpc('set_guest_order_location',params:{'p_order_id':orderId,'p_latitude':latitude,'p_longitude':longitude});}
+    return orderId;
   }
 
   Future<Map<String, dynamic>?> orderStatus(String orderId) async {
@@ -409,6 +413,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final notes = TextEditingController();
   String payment = 'pix';
   bool sending = false;
+  double? deliveryLat, deliveryLng;
+  bool locating=false;
 
   double get subtotal => widget.items.fold(0, (s, e) => s + e.total);
   double get total => subtotal + widget.store.deliveryFee;
@@ -418,6 +424,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
     address.dispose();
     notes.dispose();
     super.dispose();
+  }
+
+  Future<void> useMyLocation() async {
+    setState(()=>locating=true);
+    try{final enabled=await Geolocator.isLocationServiceEnabled();if(!enabled)throw Exception('Ative a localização do celular.');var permission=await Geolocator.checkPermission();if(permission==LocationPermission.denied)permission=await Geolocator.requestPermission();if(permission==LocationPermission.denied||permission==LocationPermission.deniedForever)throw Exception('Permissão de localização não concedida.');final p=await Geolocator.getCurrentPosition(desiredAccuracy:LocationAccuracy.high);if(mounted)setState((){deliveryLat=p.latitude;deliveryLng=p.longitude;});}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}finally{if(mounted)setState(()=>locating=false);}
   }
 
   Future<void> send() async {
@@ -435,6 +446,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         payment: payment,
         notes: notes.text.trim(),
         items: widget.items,
+        latitude: deliveryLat,
+        longitude: deliveryLng,
       );
       if (!mounted) return;
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => OrderSuccessPage(orderId: orderId, repo: widget.repo)));
@@ -461,6 +474,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
             ),
             const SizedBox(height: 12),
             TextField(controller: address, decoration: const InputDecoration(labelText: 'Endereço / pousada / referência', prefixIcon: Icon(Icons.location_on_outlined))),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(onPressed:locating?null:useMyLocation,icon:Icon(deliveryLat==null?Icons.my_location:Icons.check_circle),label:Text(locating?'LOCALIZANDO...':deliveryLat==null?'USAR MINHA LOCALIZAÇÃO':'LOCALIZAÇÃO CONFIRMADA')),
+            if(deliveryLat!=null) const Padding(padding:EdgeInsets.only(top:6),child:Text('📍 O entregador receberá o ponto exato no mapa.',style:TextStyle(fontSize:12,color:Colors.black54))),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: payment,
