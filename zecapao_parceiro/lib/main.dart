@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'dart:async';
 const supabaseUrl='https://yovjbqtazkreruvxoawf.supabase.co';
 const supabasePublishableKey='sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor';
@@ -335,7 +336,7 @@ class ZePartnerButton extends StatelessWidget {
 }
 class Home extends StatefulWidget{const Home({super.key});@override State<Home> createState()=>_Home();}
 class _Home extends State<Home>{
-bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel? channel; Timer? syncTimer; Map<String,dynamic>? order; List<Map<String,dynamic>> activeOrders=[]; Map<String,Map<String,dynamic>> deliveryStates={}; String? storeId,storeName;
+bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel? channel; Timer? syncTimer; Timer? alertTimer; final AudioPlayer alertPlayer=AudioPlayer(); String? alertedOrderId; Map<String,dynamic>? order; List<Map<String,dynamic>> activeOrders=[]; Map<String,Map<String,dynamic>> deliveryStates={}; String? storeId,storeName;
  @override void initState(){super.initState();_boot();}
  Future<void> _boot() async {
   final sb = Supabase.instance.client;
@@ -369,14 +370,17 @@ bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel
   }
   if (mounted) setState(() => loading = false);
 }
- Future<void> _loadPending()async{if(storeId==null)return;final data=await Supabase.instance.client.from('orders').select('*,order_items(*)').eq('store_id',storeId!).eq('status','pending').order('created_at').limit(1).maybeSingle();if(mounted)setState((){order=data;pending=data!=null;});}
+ Future<void> _playTumTim() async { try { await alertPlayer.stop(); await alertPlayer.play(AssetSource('audio/ze_tum_tim_v1.wav')); } catch (_) {} }
+ void _stopAlert(){alertTimer?.cancel();alertTimer=null;alertedOrderId=null;alertPlayer.stop();}
+ void _alertFor(Map<String,dynamic>? data){final id=data?['id']?.toString();if(id==null){_stopAlert();return;}if(alertedOrderId==id)return;_stopAlert();alertedOrderId=id;_playTumTim();alertTimer=Timer.periodic(const Duration(seconds:20),(_){if(pending&&order?['id']?.toString()==id)_playTumTim();else _stopAlert();});}
+ Future<void> _loadPending()async{if(storeId==null)return;final data=await Supabase.instance.client.from('orders').select('*,order_items(*)').eq('store_id',storeId!).eq('status','pending').order('created_at').limit(1).maybeSingle();if(mounted){setState((){order=data;pending=data!=null;});_alertFor(data);}}
  Future<void> _loadActive() async { if(storeId==null)return; final data=await Supabase.instance.client.from('orders').select('*,order_items(*)').eq('store_id',storeId!).inFilter('status',['accepted','preparing','ready','out_for_delivery','delivered']).order('created_at'); if(mounted)setState(()=>activeOrders=List<Map<String,dynamic>>.from(data)); }
  Future<void> _loadDeliveryStates() async { if(storeId==null)return; try { final data=await Supabase.instance.client.rpc('get_partner_delivery_state',params:{'p_store_id':storeId}); final map=<String,Map<String,dynamic>>{}; for(final raw in (data as List)){final row=Map<String,dynamic>.from(raw as Map);map[row['order_id'].toString()]=row;} if(mounted)setState(()=>deliveryStates=map); } catch(_){} }
  Future<void> _syncOperation() async { if(storeId==null)return; try{await Future.wait([_loadPending(),_loadActive(),_loadDeliveryStates()]);}catch(_){} }
  Future<void> advanceOrder(Map<String,dynamic> item) async { final current=item['status']?.toString(); final next=current=='accepted'?'preparing':current=='preparing'?'ready':null; if(next==null)return; try { await Supabase.instance.client.rpc('partner_update_order_status',params:{'p_order_id':item['id'],'p_status':next}); await _loadActive(); } catch(_) { if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Não foi possível avançar o pedido'))); } }
  void _listenOrders(){channel=Supabase.instance.client.channel('ze-parceiro-$storeId').onPostgresChanges(event:PostgresChangeEvent.all,schema:'public',table:'orders',filter:PostgresChangeFilter(type:PostgresChangeFilterType.eq,column:'store_id',value:storeId!),callback:(payload){_loadPending();_loadActive();_loadDeliveryStates();}).subscribe();}
- @override void dispose(){syncTimer?.cancel();if(channel!=null)Supabase.instance.client.removeChannel(channel!);super.dispose();}
- Future<void> decide(bool accept) async { if(order==null)return; final status=accept?'accepted':'cancelled'; final id=order!['id']; try { await Supabase.instance.client.rpc('partner_update_order_status',params:{'p_order_id':id,'p_status':status}); if(!mounted)return; setState((){pending=false;order=null;}); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(accept?'Pedido aceito • preparar agora':'Pedido recusado'))); await _loadPending(); await _loadActive(); } catch(e) { if(!mounted)return; ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Não foi possível atualizar o pedido'))); } }
+ @override void dispose(){syncTimer?.cancel();alertTimer?.cancel();alertPlayer.dispose();if(channel!=null)Supabase.instance.client.removeChannel(channel!);super.dispose();}
+ Future<void> decide(bool accept) async { if(order==null)return; final status=accept?'accepted':'cancelled'; final id=order!['id']; try { await Supabase.instance.client.rpc('partner_update_order_status',params:{'p_order_id':id,'p_status':status}); if(!mounted)return; _stopAlert(); setState((){pending=false;order=null;}); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(accept?'Pedido aceito • preparar agora':'Pedido recusado'))); await _loadPending(); await _loadActive(); } catch(e) { if(!mounted)return; ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Não foi possível atualizar o pedido'))); } }
  Widget operation() {
   final items=(order?['order_items'] as List?)??const [];
   final rawId=order?['id']?.toString()??'PEDIDO';
