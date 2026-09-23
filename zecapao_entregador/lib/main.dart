@@ -24,10 +24,25 @@ class ZeActionButton extends StatelessWidget{
 }
 class HomePage extends StatefulWidget{const HomePage({super.key});@override State<HomePage> createState()=>_HomePageState();}
 class _HomePageState extends State<HomePage>{
- bool online=false,busy=false; Map<String,dynamic>? offer; String? deliveryStatus; Timer? poller; final name=TextEditingController(text:'Zé Entregador');
+ bool online=false,busy=false,fetching=false; Map<String,dynamic>? offer; String? deliveryStatus; Timer? poller; final name=TextEditingController(text:'Zé Entregador');
  @override void dispose(){poller?.cancel();name.dispose();super.dispose();}
  Future<void> toggle()async{setState(()=>online=!online);poller?.cancel();if(online){await loadOffer();poller=Timer.periodic(const Duration(seconds:3),(_){if(online&&deliveryStatus==null)loadOffer();});}else{setState(()=>offer=null);}}
- Future<void> loadOffer()async{if(!online)return;try{final data=await Supabase.instance.client.rpc('get_ready_delivery_offer');final rows=data as List;if(mounted&&deliveryStatus==null)setState(()=>offer=rows.isEmpty?null:Map<String,dynamic>.from(rows.first as Map));}catch(e){if(mounted){setState(()=>offer=null);ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Falha ao buscar entrega: $e')));}}}
+ Future<void> loadOffer() async {
+  if(!online||fetching||deliveryStatus!=null)return;
+  fetching=true;
+  try{
+   final data=await Supabase.instance.client.rpc('get_ready_delivery_offer');
+   final rows=data as List;
+   if(mounted&&deliveryStatus==null&&rows.isNotEmpty){
+    final next=Map<String,dynamic>.from(rows.first as Map);
+    if(offer?['order_id']!=next['order_id'])setState(()=>offer=next);
+   } else if(mounted&&rows.isEmpty&&offer!=null&&deliveryStatus==null){
+    setState(()=>offer=null);
+   }
+  }catch(_){
+   // Falha temporaria de rede: preserva a oferta atual e tenta novamente.
+  }finally{fetching=false;}
+ }
  Future<void> accept()async{if(offer==null)return;setState(()=>busy=true);try{await Supabase.instance.client.rpc('driver_accept_delivery',params:{'p_order_id':offer!['order_id'],'p_driver_name':name.text.trim()});poller?.cancel();if(mounted)setState(()=>deliveryStatus='accepted');}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Esta entrega não está mais disponível.')));}finally{if(mounted)setState(()=>busy=false);}}
  Future<void> advance()async{if(offer==null||deliveryStatus==null)return;final next=deliveryStatus=='accepted'?'picked_up':deliveryStatus=='picked_up'?'delivered':null;if(next==null)return;setState(()=>busy=true);try{await Supabase.instance.client.rpc('driver_advance_delivery',params:{'p_order_id':offer!['order_id'],'p_status':next});if(mounted)setState(()=>deliveryStatus=next);}finally{if(mounted)setState(()=>busy=false);}}
  @override Widget build(BuildContext context){
