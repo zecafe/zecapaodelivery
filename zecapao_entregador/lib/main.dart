@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
+import 'package:url_launcher/url_launcher.dart';
 
 const supabaseUrl='https://yovjbqtazkreruvxoawf.supabase.co';
 const supabaseAnonKey='sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor';
@@ -43,6 +44,7 @@ class _HomePageState extends State<HomePage>{
    // Falha temporaria de rede: preserva a oferta atual e tenta novamente.
   }finally{fetching=false;}
  }
+ Future<void> openRoute() async { if(offer==null)return; final lat=offer!['latitude'];final lng=offer!['longitude'];Uri uri;if(lat!=null&&lng!=null){uri=Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');}else{final q=Uri.encodeComponent(offer!['delivery_address']?.toString()??'');uri=Uri.parse('https://www.google.com/maps/search/?api=1&query=$q');}await launchUrl(uri,mode:LaunchMode.externalApplication); }
  Future<void> accept()async{if(offer==null)return;setState(()=>busy=true);try{await Supabase.instance.client.rpc('driver_accept_delivery',params:{'p_order_id':offer!['order_id'],'p_driver_name':name.text.trim()});poller?.cancel();if(mounted)setState(()=>deliveryStatus='accepted');}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Esta entrega não está mais disponível.')));}finally{if(mounted)setState(()=>busy=false);}}
  Future<void> advance()async{if(offer==null||deliveryStatus==null)return;final next=deliveryStatus=='accepted'?'picked_up':deliveryStatus=='picked_up'?'delivered':null;if(next==null)return;setState(()=>busy=true);try{await Supabase.instance.client.rpc('driver_advance_delivery',params:{'p_order_id':offer!['order_id'],'p_status':next});if(mounted)setState(()=>deliveryStatus=next);}finally{if(mounted)setState(()=>busy=false);}}
  @override Widget build(BuildContext context){
@@ -59,7 +61,8 @@ class _HomePageState extends State<HomePage>{
     if(offer==null)Card(child:Padding(padding:const EdgeInsets.all(20),child:Column(children:[const Text('Nenhuma entrega disponível agora.',style:TextStyle(fontWeight:FontWeight.w800)),const SizedBox(height:10),TextButton.icon(onPressed:loadOffer,icon:const Icon(Icons.refresh),label:const Text('ATUALIZAR'))])))
     else Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:const Color(0xFF171717),borderRadius:BorderRadius.circular(26)),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
       Text(deliveryStatus==null?'NOVA ENTREGA':'ENTREGA #$short',style:const TextStyle(color:Color(0xFFF4C430),fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:10),
-      Text('$store\nCliente: $customer\nDestino: $address',style:const TextStyle(color:Colors.white,fontSize:16,height:1.5)),const SizedBox(height:12),
+      Text('$store\nCliente: $customer\nDestino: $address',style:const TextStyle(color:Colors.white,fontSize:16,height:1.5)),const SizedBox(height:10),
+      OutlinedButton.icon(onPressed:openRoute,icon:const Icon(Icons.map_outlined),label:Text(offer?['latitude']!=null?'ABRIR ROTA NO MAPA':'LOCALIZAR ENDEREÇO'),style:OutlinedButton.styleFrom(foregroundColor:const Color(0xFFF4C430),side:const BorderSide(color:Color(0xFFF4C430)))),const SizedBox(height:12),
       Text('Você recebe a partir de ${money(driverFare(2))}',style:const TextStyle(color:Colors.white70)),const SizedBox(height:16),
       ZeActionButton(label:busy?'AGUARDE...':action,icon:deliveryStatus=='picked_up'?Icons.check_circle:Icons.navigation_rounded,onPressed:busy||deliveryStatus=='delivered'?null:(deliveryStatus==null?accept:advance))
     ]))
