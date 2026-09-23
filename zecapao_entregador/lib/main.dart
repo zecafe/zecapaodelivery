@@ -1,174 +1,53 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() => runApp(const ZeEntregadorApp());
+const supabaseUrl='https://yovjbqtazkreruvxoawf.supabase.co';
+const supabaseAnonKey='sb_publishable_0bNYhr66x-Jxfqa43gZxvw_gq3FjcmL';
 
-String money(num v) => 'R\$ ${v.toStringAsFixed(2).replaceAll('.', ',')}';
-
-double driverFare(double km, {double base = 6, double includedKm = 2, double extraPerKm = 1.5}) {
-  final extra = (km - includedKm).clamp(0, double.infinity);
-  return base + (extra * extraPerKm);
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(url:supabaseUrl,anonKey:supabaseAnonKey);
+  runApp(const ZeEntregadorApp());
 }
+String money(num v)=>'R\$ ${v.toStringAsFixed(2).replaceAll('.',',')}';
+double driverFare(double km,{double base=6,double includedKm=2,double extraPerKm=1.5})=>base+((km-includedKm).clamp(0,double.infinity)*extraPerKm);
 
-class ZeEntregadorApp extends StatelessWidget {
-  const ZeEntregadorApp({super.key});
-  @override
-  Widget build(BuildContext context) => MaterialApp(
-    debugShowCheckedModeBanner: false,
-    title: 'Zé Entregador',
-    theme: ThemeData(useMaterial3: true, scaffoldBackgroundColor: const Color(0xFFF6F0E4), colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFF4C430), primary: const Color(0xFF171717)), filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(58), backgroundColor: const Color(0xFFF4C430), foregroundColor: const Color(0xFF171717), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 1.1)))),
-    home: const HomePage(),
-  );
+class ZeEntregadorApp extends StatelessWidget{
+ const ZeEntregadorApp({super.key});
+ @override Widget build(BuildContext context)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Zé Entregador',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:const Color(0xFFF6F0E4),colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFF4C430),primary:const Color(0xFF171717))),home:const HomePage());
 }
-
-class ZeActionButton extends StatelessWidget {
-  final String label; final IconData icon; final VoidCallback? onPressed;
-  const ZeActionButton({super.key,required this.label,required this.icon,required this.onPressed});
-  @override Widget build(BuildContext context)=>Material(color:Colors.transparent,child:InkWell(onTap:onPressed,borderRadius:BorderRadius.circular(16),child:Ink(decoration:BoxDecoration(color:onPressed==null?const Color(0xFFBDB7AA):const Color(0xFFF4C430),borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFF171717),width:2)),child:Container(height:62,padding:const EdgeInsets.symmetric(horizontal:18),child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,color:const Color(0xFF171717)),const SizedBox(width:10),Flexible(child:Text(label,textAlign:TextAlign.center,style:const TextStyle(color:Color(0xFF171717),fontSize:14,fontWeight:FontWeight.w900,letterSpacing:1.2)))])))));
+class ZeActionButton extends StatelessWidget{
+ final String label; final IconData icon; final VoidCallback? onPressed;
+ const ZeActionButton({super.key,required this.label,required this.icon,required this.onPressed});
+ @override Widget build(BuildContext context)=>Material(color:Colors.transparent,child:InkWell(onTap:onPressed,borderRadius:BorderRadius.circular(16),child:Ink(decoration:BoxDecoration(color:onPressed==null?const Color(0xFFBDB7AA):const Color(0xFFF4C430),borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFF171717),width:2)),child:Container(height:62,padding:const EdgeInsets.symmetric(horizontal:18),child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon),const SizedBox(width:10),Flexible(child:Text(label,textAlign:TextAlign.center,style:const TextStyle(fontSize:14,fontWeight:FontWeight.w900,letterSpacing:1.1)))])))));
 }
-
-class WalletEntry {
-  final String title;
-  final double amount;
-  final DateTime at;
-  const WalletEntry(this.title, this.amount, this.at);
-}
-
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  bool online = false;
-  int step = 0;
-  int deliveries = 0;
-  double available = 0;
-  String pixKey = '';
-  final double distanceKm = 5;
-  final List<WalletEntry> ledger = [];
-
-  final labels = const [
-    'Nova entrega disponível',
-    'Cheguei ao estabelecimento',
-    'Pedido retirado',
-    'Cheguei ao cliente',
-    'Confirmar entrega',
-    'Entrega concluída',
-  ];
-
-  double get earning => driverFare(distanceKm);
-  String get actionLabel => step == 0 ? 'ACEITAR ENTREGA' : step == 5 ? 'CONCLUÍDA' : labels[step];
-
-  void toggleOnline() => setState(() {
-    online = !online;
-    if (!online) step = 0;
-  });
-
-  void advanceDelivery() {
-    if (step >= 5) return;
-    setState(() {
-      step++;
-      if (step == 5) {
-        deliveries++;
-        available += earning;
-        ledger.insert(0, WalletEntry('Entrega demonstrativa #0001', earning, DateTime.now()));
-      }
-    });
-  }
-
-  void savePix() {
-    final c = TextEditingController(text: pixKey);
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Chave Pix'),
-        content: TextField(controller: c, decoration: const InputDecoration(labelText: 'CPF, telefone, e-mail ou chave aleatória')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCELAR')),
-          FilledButton(onPressed: () { setState(() => pixKey = c.text.trim()); Navigator.pop(ctx); }, child: const Text('SALVAR')),
-        ],
-      ),
-    );
-  }
-
-  void requestWithdrawal() {
-    if (available <= 0 || pixKey.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(pixKey.isEmpty ? 'Cadastre sua chave Pix primeiro.' : 'Você ainda não possui saldo disponível.')));
-      return;
-    }
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Solicitar saque'),
-        content: Text('Solicitar saque manual de ${money(available)} para a chave Pix cadastrada?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('VOLTAR')),
-          FilledButton(onPressed: () {
-            Navigator.pop(ctx);
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('MVP 0.2: solicitação preparada. O pagamento será confirmado manualmente pelo Admin.')));
-          }, child: const Text('SOLICITAR')),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(backgroundColor: const Color(0xFF171717), foregroundColor: Colors.white, title: const Row(children:[CircleAvatar(backgroundColor: Color(0xFFF4C430), child: Icon(Icons.sports_motorsports,color:Color(0xFF171717))),SizedBox(width:12),Text('Zé Entregador', style: TextStyle(fontWeight: FontWeight.w900))])),
-    body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text('Zé Capão • Entregador', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 16),
-          Container(decoration: BoxDecoration(color: online ? const Color(0xFFF4C430) : const Color(0xFF171717), borderRadius: BorderRadius.circular(28)), child: Padding(
-            padding: const EdgeInsets.all(22),
-            child: Column(children: [
-              Icon(online ? Icons.delivery_dining : Icons.power_settings_new, size: 60, color: online ? const Color(0xFF171717) : const Color(0xFFF4C430)),
-              Text(online ? 'ONLINE' : 'OFFLINE', style: TextStyle(color: online ? const Color(0xFF171717) : Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 10),
-              ZeActionButton(onPressed: toggleOnline, icon: online ? Icons.pause_circle_outline : Icons.play_circle_fill, label: online ? 'ENCERRAR TURNO' : 'INICIAR TURNO'),
-            ]),
-          )),
-          if (online) ...[
-            const SizedBox(height: 16),
-            Container(decoration: BoxDecoration(color: const Color(0xFF171717), borderRadius: BorderRadius.circular(26)), child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Text(labels[step], style: const TextStyle(color: Color(0xFFF4C430), fontSize: 20, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 8),
-                Text('Zé Capão • corrida demonstrativa\nDistância: ${distanceKm.toStringAsFixed(1).replaceAll('.', ',')} km\nVocê recebe: ${money(earning)}'),
-                const SizedBox(height: 6),
-                const Text('Regra: R\$ 6,00 até 2 km + R\$ 1,50/km excedente', style: TextStyle(fontSize: 12)),
-                const SizedBox(height: 14),
-                ZeActionButton(onPressed: step < 5 ? advanceDelivery : null, icon: step == 0 ? Icons.arrow_forward_rounded : step == 5 ? Icons.check_circle : Icons.navigation_rounded, label: actionLabel.toUpperCase()),
-              ]),
-            )),
-          ],
-          const SizedBox(height: 16),
-          Card(child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const Row(children: [Icon(Icons.account_balance_wallet_outlined), SizedBox(width: 8), Text('Minha carteira', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))]),
-              const SizedBox(height: 14),
-              const Text('SALDO DISPONÍVEL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-              Text(money(available), style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900)),
-              Text('$deliveries entrega(s) concluída(s)'),
-              const Divider(height: 28),
-              ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.pix), title: const Text('Chave Pix'), subtitle: Text(pixKey.isEmpty ? 'Não cadastrada' : pixKey), trailing: TextButton(onPressed: savePix, child: Text(pixKey.isEmpty ? 'CADASTRAR' : 'ALTERAR'))),
-              FilledButton.icon(onPressed: requestWithdrawal, icon: const Icon(Icons.pix), label: const Text('SOLICITAR SAQUE')),
-            ]),
-          )),
-          if (ledger.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const Text('Extrato', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-            ...ledger.map((e) => ListTile(leading: const CircleAvatar(child: Icon(Icons.add)), title: Text(e.title), subtitle: const Text('Entrega concluída'), trailing: Text('+ ${money(e.amount)}', style: const TextStyle(fontWeight: FontWeight.bold)))),
-          ],
-          const SizedBox(height: 18),
-          const Center(child: Text('MVP 0.2 • carteira contábil demonstrativa', style: TextStyle(color: Colors.black45))),
-        ],
-      ),
-    ),
-  );
+class HomePage extends StatefulWidget{const HomePage({super.key});@override State<HomePage> createState()=>_HomePageState();}
+class _HomePageState extends State<HomePage>{
+ bool online=false,busy=false; Map<String,dynamic>? offer; String? deliveryStatus; final name=TextEditingController(text:'Zé Entregador');
+ @override void dispose(){name.dispose();super.dispose();}
+ Future<void> toggle()async{setState(()=>online=!online);if(online)await loadOffer();else setState(()=>offer=null);}
+ Future<void> loadOffer()async{if(!online)return;try{final data=await Supabase.instance.client.rpc('get_ready_delivery_offer');final rows=data as List;if(mounted)setState(()=>offer=rows.isEmpty?null:Map<String,dynamic>.from(rows.first as Map));}catch(_){if(mounted)setState(()=>offer=null);}}
+ Future<void> accept()async{if(offer==null)return;setState(()=>busy=true);try{await Supabase.instance.client.rpc('driver_accept_delivery',params:{'p_order_id':offer!['order_id'],'p_driver_name':name.text.trim()});if(mounted)setState(()=>deliveryStatus='accepted');}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Esta entrega não está mais disponível.')));}finally{if(mounted)setState(()=>busy=false);}}
+ Future<void> advance()async{if(offer==null||deliveryStatus==null)return;final next=deliveryStatus=='accepted'?'picked_up':deliveryStatus=='picked_up'?'delivered':null;if(next==null)return;setState(()=>busy=true);try{await Supabase.instance.client.rpc('driver_advance_delivery',params:{'p_order_id':offer!['order_id'],'p_status':next});if(mounted)setState(()=>deliveryStatus=next);}finally{if(mounted)setState(()=>busy=false);}}
+ @override Widget build(BuildContext context){
+  final store=offer?['store_name']?.toString()??'';
+  final customer=offer?['customer_name']?.toString()??'';
+  final address=offer?['delivery_address']?.toString()??'';
+  final id=offer?['order_id']?.toString()??'';
+  final short=id.length>8?id.substring(0,8).toUpperCase():id.toUpperCase();
+  final action=deliveryStatus==null?'ACEITAR ENTREGA':deliveryStatus=='accepted'?'RETIREI O PEDIDO':deliveryStatus=='picked_up'?'CONFIRMAR ENTREGA':'ENTREGA CONCLUÍDA';
+  return Scaffold(appBar:AppBar(backgroundColor:const Color(0xFF171717),foregroundColor:Colors.white,title:const Row(children:[CircleAvatar(backgroundColor:Color(0xFFF4C430),child:Icon(Icons.sports_motorsports,color:Color(0xFF171717))),SizedBox(width:12),Text('Zé Entregador',style:TextStyle(fontWeight:FontWeight.w900))])),body:SafeArea(child:ListView(padding:const EdgeInsets.all(20),children:[
+   const Text('Zé Capão • Entregador',style:TextStyle(fontSize:28,fontWeight:FontWeight.w900)),const SizedBox(height:16),
+   Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:online?const Color(0xFFF4C430):const Color(0xFF171717),borderRadius:BorderRadius.circular(26)),child:Column(children:[Icon(online?Icons.delivery_dining:Icons.power_settings_new,size:54,color:online?const Color(0xFF171717):const Color(0xFFF4C430)),Text(online?'ONLINE':'OFFLINE',style:TextStyle(color:online?const Color(0xFF171717):Colors.white,fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:10),ZeActionButton(label:online?'ENCERRAR TURNO':'INICIAR TURNO',icon:online?Icons.pause_circle:Icons.play_circle,onPressed:toggle)])),
+   if(online)...[const SizedBox(height:14),TextField(controller:name,decoration:const InputDecoration(labelText:'Nome do entregador',border:OutlineInputBorder())),const SizedBox(height:14),
+    if(offer==null)Card(child:Padding(padding:const EdgeInsets.all(20),child:Column(children:[const Text('Nenhuma entrega disponível agora.',style:TextStyle(fontWeight:FontWeight.w800)),const SizedBox(height:10),TextButton.icon(onPressed:loadOffer,icon:const Icon(Icons.refresh),label:const Text('ATUALIZAR'))])))
+    else Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:const Color(0xFF171717),borderRadius:BorderRadius.circular(26)),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+      Text(deliveryStatus==null?'NOVA ENTREGA':'ENTREGA #$short',style:const TextStyle(color:Color(0xFFF4C430),fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:10),
+      Text('$store\nCliente: $customer\nDestino: $address',style:const TextStyle(color:Colors.white,fontSize:16,height:1.5)),const SizedBox(height:12),
+      Text('Você recebe a partir de ${money(driverFare(2))}',style:const TextStyle(color:Colors.white70)),const SizedBox(height:16),
+      ZeActionButton(label:busy?'AGUARDE...':action,icon:deliveryStatus=='picked_up'?Icons.check_circle:Icons.navigation_rounded,onPressed:busy||deliveryStatus=='delivered'?null:(deliveryStatus==null?accept:advance))
+    ]))
+   ],const SizedBox(height:18),const Text('Fluxo real conectado ao Zé Parceiro',textAlign:TextAlign.center,style:TextStyle(color:Colors.black45))
+  ])));
+ }
 }
