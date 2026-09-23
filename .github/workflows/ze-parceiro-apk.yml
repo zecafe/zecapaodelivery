@@ -28,7 +28,10 @@ jobs:
           mkdir -p /tmp/ze_parceiro/android/app/src/main/res/raw
           cp zecapao_parceiro/assets/audio/ze_tum_tim_v1.wav /tmp/ze_parceiro/android/app/src/main/res/raw/ze_tum_tim_v1.wav
           cp zecapao_parceiro/assets/audio/branding/parceiro_icon.png /tmp/parceiro_icon.png
-          sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+          sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick ffmpeg
+          # Boost TUM-TIM by 6 dB with limiter, for foreground and Android notification resource.
+          ffmpeg -y -i zecapao_parceiro/assets/audio/ze_tum_tim_v1.wav -af "volume=6dB,alimiter=limit=0.95" /tmp/ze_parceiro/assets/audio/ze_tum_tim_v1.wav
+          cp /tmp/ze_parceiro/assets/audio/ze_tum_tim_v1.wav /tmp/ze_parceiro/android/app/src/main/res/raw/ze_tum_tim_v1.wav
           for spec in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
             density="${spec%%:*}"
             size="${spec##*:}"
@@ -47,7 +50,24 @@ jobs:
           marker='''            <meta-data\n              android:name="io.flutter.embedding.android.NormalTheme"'''
           intent='''            <intent-filter android:autoVerify="false">\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="zecapao-parceiro" android:host="login-callback" />\n            </intent-filter>\n'''
           s=s.replace(marker, intent+marker)
+          # Firebase Google Services plugin + notification permission/default sound metadata.
+          s=s.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">','<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.VIBRATE" />')
+          s=s.replace('<application', '<application')
+          app_end='</application>'
+          meta='''        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="capao_orders_v1" />\n        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@mipmap/ic_launcher" />\n'''
+          s=s.replace(app_end, meta+app_end)
           p.write_text(s)
+          # Flutter 3.44 uses Kotlin DSL. Add Google Services plugin to settings and app.
+          settings=Path('/tmp/ze_parceiro/android/settings.gradle.kts')
+          t=settings.read_text()
+          if 'com.google.gms.google-services' not in t:
+              t=t.replace('plugins {','plugins {\n    id("com.google.gms.google-services") version "4.4.4" apply false',1)
+          settings.write_text(t)
+          app=Path('/tmp/ze_parceiro/android/app/build.gradle.kts')
+          t=app.read_text()
+          if 'com.google.gms.google-services' not in t:
+              t=t.replace('plugins {','plugins {\n    id("com.google.gms.google-services")',1)
+          app.write_text(t)
           PY
       - name: Dependencias
         working-directory: /tmp/ze_parceiro
