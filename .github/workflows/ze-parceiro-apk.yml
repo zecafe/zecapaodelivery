@@ -20,6 +20,8 @@ jobs:
           flutter create --platforms=android --org com.zecapao /tmp/ze_parceiro
           cp zecapao_parceiro/pubspec.yaml /tmp/ze_parceiro/pubspec.yaml
           cp zecapao_parceiro/lib/main.dart /tmp/ze_parceiro/lib/main.dart
+          mkdir -p /tmp/ze_parceiro/assets/audio
+          cp zecapao_parceiro/assets/audio/ze_tum_tim_v1.wav /tmp/ze_parceiro/assets/audio/ze_tum_tim_v1.wav
       - name: Dependencias
         working-directory: /tmp/ze_parceiro
         run: flutter pub get
