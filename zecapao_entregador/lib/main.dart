@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 
 const supabaseUrl='https://yovjbqtazkreruvxoawf.supabase.co';
 const supabaseAnonKey='sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor';
@@ -23,11 +24,11 @@ class ZeActionButton extends StatelessWidget{
 }
 class HomePage extends StatefulWidget{const HomePage({super.key});@override State<HomePage> createState()=>_HomePageState();}
 class _HomePageState extends State<HomePage>{
- bool online=false,busy=false; Map<String,dynamic>? offer; String? deliveryStatus; final name=TextEditingController(text:'Zé Entregador');
- @override void dispose(){name.dispose();super.dispose();}
- Future<void> toggle()async{setState(()=>online=!online);if(online)await loadOffer();else setState(()=>offer=null);}
- Future<void> loadOffer()async{if(!online)return;try{final data=await Supabase.instance.client.rpc('get_ready_delivery_offer');final rows=data as List;if(mounted)setState(()=>offer=rows.isEmpty?null:Map<String,dynamic>.from(rows.first as Map));}catch(e){if(mounted){setState(()=>offer=null);ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Falha ao buscar entrega: $e')));}}}
- Future<void> accept()async{if(offer==null)return;setState(()=>busy=true);try{await Supabase.instance.client.rpc('driver_accept_delivery',params:{'p_order_id':offer!['order_id'],'p_driver_name':name.text.trim()});if(mounted)setState(()=>deliveryStatus='accepted');}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Esta entrega não está mais disponível.')));}finally{if(mounted)setState(()=>busy=false);}}
+ bool online=false,busy=false; Map<String,dynamic>? offer; String? deliveryStatus; Timer? poller; final name=TextEditingController(text:'Zé Entregador');
+ @override void dispose(){poller?.cancel();name.dispose();super.dispose();}
+ Future<void> toggle()async{setState(()=>online=!online);poller?.cancel();if(online){await loadOffer();poller=Timer.periodic(const Duration(seconds:3),(_){if(online&&deliveryStatus==null)loadOffer();});}else{setState(()=>offer=null);}}
+ Future<void> loadOffer()async{if(!online)return;try{final data=await Supabase.instance.client.rpc('get_ready_delivery_offer');final rows=data as List;if(mounted&&deliveryStatus==null)setState(()=>offer=rows.isEmpty?null:Map<String,dynamic>.from(rows.first as Map));}catch(e){if(mounted){setState(()=>offer=null);ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Falha ao buscar entrega: $e')));}}}
+ Future<void> accept()async{if(offer==null)return;setState(()=>busy=true);try{await Supabase.instance.client.rpc('driver_accept_delivery',params:{'p_order_id':offer!['order_id'],'p_driver_name':name.text.trim()});poller?.cancel();if(mounted)setState(()=>deliveryStatus='accepted');}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Esta entrega não está mais disponível.')));}finally{if(mounted)setState(()=>busy=false);}}
  Future<void> advance()async{if(offer==null||deliveryStatus==null)return;final next=deliveryStatus=='accepted'?'picked_up':deliveryStatus=='picked_up'?'delivered':null;if(next==null)return;setState(()=>busy=true);try{await Supabase.instance.client.rpc('driver_advance_delivery',params:{'p_order_id':offer!['order_id'],'p_status':next});if(mounted)setState(()=>deliveryStatus=next);}finally{if(mounted)setState(()=>busy=false);}}
  @override Widget build(BuildContext context){
   final store=offer?['store_name']?.toString()??'';
