@@ -334,7 +334,7 @@ class ZePartnerButton extends StatelessWidget {
 }
 class Home extends StatefulWidget{const Home({super.key});@override State<Home> createState()=>_Home();}
 class _Home extends State<Home>{
-bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel? channel; Map<String,dynamic>? order; List<Map<String,dynamic>> activeOrders=[]; String? storeId,storeName;
+bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel? channel; Map<String,dynamic>? order; List<Map<String,dynamic>> activeOrders=[]; Map<String,Map<String,dynamic>> deliveryStates={}; String? storeId,storeName;
  @override void initState(){super.initState();_boot();}
  Future<void> _boot() async {
   final sb = Supabase.instance.client;
@@ -356,6 +356,7 @@ bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel
     if (storeId != null) {
       await _loadPending();
       await _loadActive();
+      await _loadDeliveryStates();
       _listenOrders();
     } else {
       accessError = 'Esta conta ainda não está vinculada a um estabelecimento.';
@@ -367,8 +368,9 @@ bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel
 }
  Future<void> _loadPending()async{if(storeId==null)return;final data=await Supabase.instance.client.from('orders').select('*,order_items(*)').eq('store_id',storeId!).eq('status','pending').order('created_at').limit(1).maybeSingle();if(mounted)setState((){order=data;pending=data!=null;});}
  Future<void> _loadActive() async { if(storeId==null)return; final data=await Supabase.instance.client.from('orders').select('*,order_items(*)').eq('store_id',storeId!).inFilter('status',['accepted','preparing','ready']).order('created_at'); if(mounted)setState(()=>activeOrders=List<Map<String,dynamic>>.from(data)); }
+ Future<void> _loadDeliveryStates() async { if(storeId==null)return; try { final data=await Supabase.instance.client.rpc('get_partner_delivery_state',params:{'p_store_id':storeId}); final map=<String,Map<String,dynamic>>{}; for(final raw in (data as List)){final row=Map<String,dynamic>.from(raw as Map);map[row['order_id'].toString()]=row;} if(mounted)setState(()=>deliveryStates=map); } catch(_){} }
  Future<void> advanceOrder(Map<String,dynamic> item) async { final current=item['status']?.toString(); final next=current=='accepted'?'preparing':current=='preparing'?'ready':null; if(next==null)return; try { await Supabase.instance.client.rpc('partner_update_order_status',params:{'p_order_id':item['id'],'p_status':next}); await _loadActive(); } catch(_) { if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Não foi possível avançar o pedido'))); } }
- void _listenOrders(){channel=Supabase.instance.client.channel('ze-parceiro-$storeId').onPostgresChanges(event:PostgresChangeEvent.all,schema:'public',table:'orders',filter:PostgresChangeFilter(type:PostgresChangeFilterType.eq,column:'store_id',value:storeId!),callback:(payload){_loadPending();_loadActive();}).subscribe();}
+ void _listenOrders(){channel=Supabase.instance.client.channel('ze-parceiro-$storeId').onPostgresChanges(event:PostgresChangeEvent.all,schema:'public',table:'orders',filter:PostgresChangeFilter(type:PostgresChangeFilterType.eq,column:'store_id',value:storeId!),callback:(payload){_loadPending();_loadActive();_loadDeliveryStates();}).subscribe();}
  @override void dispose(){if(channel!=null)Supabase.instance.client.removeChannel(channel!);super.dispose();}
  Future<void> decide(bool accept) async { if(order==null)return; final status=accept?'accepted':'cancelled'; final id=order!['id']; try { await Supabase.instance.client.rpc('partner_update_order_status',params:{'p_order_id':id,'p_status':status}); if(!mounted)return; setState((){pending=false;order=null;}); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(accept?'Pedido aceito • preparar agora':'Pedido recusado'))); await _loadPending(); await _loadActive(); } catch(e) { if(!mounted)return; ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Não foi possível atualizar o pedido'))); } }
  Widget operation() {
@@ -425,11 +427,14 @@ bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel
       final id=o['id']?.toString()??'';
       final short=id.length>8?id.substring(0,8).toUpperCase():id.toUpperCase();
       final status=o['status']?.toString()??'';
-      final label=status=='accepted'?'INICIAR PREPARO':status=='preparing'?'MARCAR COMO PRONTO':'AGUARDANDO ENTREGADOR';
+      final delivery=deliveryStates[id];
+      final dStatus=delivery?['delivery_status']?.toString();
+      final driver=delivery?['driver_name']?.toString();
+      final label=status=='accepted'?'INICIAR PREPARO':status=='preparing'?'MARCAR COMO PRONTO':dStatus=='accepted'?'ENTREGADOR A CAMINHO':dStatus=='picked_up'?'SAIU PARA ENTREGA':dStatus=='delivered'?'PEDIDO CONCLUÍDO':'AGUARDANDO ENTREGADOR';
       return Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
         Text('#$short',style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900)),
         const SizedBox(height:4),
-        Text(status=='accepted'?'Pedido aceito':status=='preparing'?'Em preparo':'Pronto para entrega',style:const TextStyle(fontWeight:FontWeight.w700)),
+        Text(status=='accepted'?'Pedido aceito':status=='preparing'?'Em preparo':dStatus=='accepted'?'$driver • a caminho do Zecafé':dStatus=='picked_up'?'$driver • em entrega':dStatus=='delivered'?'Entregue por $driver':'Pronto para entrega',style:const TextStyle(fontWeight:FontWeight.w700)),
         const SizedBox(height:12),
         ZePartnerButton(label:label,icon:status=='ready'?Icons.delivery_dining:Icons.restaurant,onTap:status=='ready'?null:()=>advanceOrder(o)),
       ])));
