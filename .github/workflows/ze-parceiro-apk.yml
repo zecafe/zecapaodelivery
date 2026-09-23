@@ -22,6 +22,19 @@ jobs:
           flutter create --platforms=android --org com.zecapao /tmp/ze_parceiro
           cp zecapao_parceiro/pubspec.yaml /tmp/ze_parceiro/pubspec.yaml
           cp zecapao_parceiro/lib/main.dart /tmp/ze_parceiro/lib/main.dart
+          mkdir -p /tmp/ze_parceiro/assets/audio
+          cp zecapao_parceiro/assets/audio/ze_tum_tim_v1.wav /tmp/ze_parceiro/assets/audio/ze_tum_tim_v1.wav
+          cp zecapao_parceiro/assets/audio/branding/parceiro_icon.png /tmp/parceiro_icon.png
+          python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          src=Image.open('/tmp/parceiro_icon.png').convert('RGBA')
+          sizes={'mdpi':48,'hdpi':72,'xhdpi':96,'xxhdpi':144,'xxxhdpi':192}
+          for density,size in sizes.items():
+              out=Path('/tmp/ze_parceiro/android/app/src/main/res')/f'mipmap-{density}'/'ic_launcher.png'
+              out.parent.mkdir(parents=True,exist_ok=True)
+              src.resize((size,size),Image.Resampling.LANCZOS).save(out)
+          PY
           python3 - <<'PY'
           from pathlib import Path
           p=Path('/tmp/ze_parceiro/android/app/src/main/AndroidManifest.xml')
