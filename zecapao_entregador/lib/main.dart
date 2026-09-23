@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 const supabaseUrl='https://yovjbqtazkreruvxoawf.supabase.co';
-const supabaseAnonKey='sb_publishable_0bNYhr66x-Jxfqa43gZxvw_gq3FjcmL';
+const supabaseAnonKey='sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
