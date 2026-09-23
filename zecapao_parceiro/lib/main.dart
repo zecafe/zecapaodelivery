@@ -4,8 +4,8 @@ import 'dart:async';
 const supabaseUrl='https://yovjbqtazkreruvxoawf.supabase.co';
 const supabasePublishableKey='sb_publishable_qOQlqYHbhc1005WoMOZS6g__52vXAor';
 Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await Supabase.initialize(url:supabaseUrl,publishableKey:supabasePublishableKey); runApp(const ZeParceiro()); }
-const y=Color(0xFFF4C430), dark=Color(0xFF171717), cream=Color(0xFFF6F0E4);
-class ZeParceiro extends StatelessWidget{const ZeParceiro({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Zé Parceiro',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:cream,colorScheme:ColorScheme.fromSeed(seedColor:y,primary:dark)),home:const AuthGate());}
+const y=Color(0xFFF9A900), dark=Color(0xFF171717), cream=Color(0xFFFFF7E6);
+class ZeParceiro extends StatelessWidget{const ZeParceiro({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Parceiro Capão Delivery',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:cream,colorScheme:ColorScheme.fromSeed(seedColor:y,primary:dark)),home:const AuthGate());}
 class AuthGate extends StatefulWidget{const AuthGate({super.key});@override State<AuthGate> createState()=>_AuthGate();}
 class _AuthGate extends State<AuthGate> {
   late final Stream<AuthState> auth;
@@ -95,7 +95,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 const SizedBox(height: 20),
                 const Text('Criar nova senha', textAlign: TextAlign.center, style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 8),
-                const Text('Digite a nova senha do Zé Parceiro.', textAlign: TextAlign.center),
+                const Text('Digite a nova senha do Parceiro Capão Delivery.', textAlign: TextAlign.center),
                 const SizedBox(height: 24),
                 TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Nova senha', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
@@ -233,7 +233,7 @@ class _LoginPage extends State<LoginPage> {
                   ),
                   const SizedBox(height: 20),
                   const Text(
-                    'Zé Parceiro',
+                    'Parceiro Capão Delivery',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
                   ),
@@ -387,7 +387,7 @@ bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel
    padding:const EdgeInsets.all(18),
    children:[
     const Text('Operação',style:TextStyle(fontSize:30,fontWeight:FontWeight.w900)),
-    Text(storeName!=null?'$storeName • Vale do Capão':'Zé Parceiro • Vale do Capão',style:const TextStyle(color:Colors.black54)),
+    Text(storeName!=null?'$storeName • Vale do Capão':'Parceiro Capão Delivery • Vale do Capão',style:const TextStyle(color:Colors.black54)),
     if(accessError!=null)...[const SizedBox(height:12),Card(child:Padding(padding:const EdgeInsets.all(16),child:Text(accessError!,style:const TextStyle(fontWeight:FontWeight.w800))))],
     const SizedBox(height:18),
     if(pending)
@@ -448,7 +448,7 @@ bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel
  }
 
  Widget management()=>ListView(padding:const EdgeInsets.all(18),children:[const Text('Gestão',style:TextStyle(fontSize:30,fontWeight:FontWeight.w900)),const SizedBox(height:18),const Card(child:ListTile(leading:CircleAvatar(backgroundColor:y,child:Icon(Icons.calculate,color:dark)),title:Text('CMV e fichas técnicas',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('Insumos, custos, margem e preço ideal'),trailing:Icon(Icons.chevron_right))),const Card(child:ListTile(leading:CircleAvatar(backgroundColor:y,child:Icon(Icons.inventory_2,color:dark)),title:Text('Estoque',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('Entradas, consumo e alertas'),trailing:Icon(Icons.chevron_right)))]);
- @override Widget build(BuildContext c){if(loading)return const Scaffold(body:Center(child:CircularProgressIndicator()));return Scaffold(appBar:AppBar(backgroundColor:dark,foregroundColor:Colors.white,title:const Row(children:[CircleAvatar(backgroundColor:y,child:Icon(Icons.storefront,color:dark)),SizedBox(width:10),Text('Zé Parceiro',style:TextStyle(fontWeight:FontWeight.w900))]),actions:[IconButton(tooltip:'Sair',icon:const Icon(Icons.logout_rounded),onPressed:() async {await Supabase.instance.client.auth.signOut();})]),body:SafeArea(child:tab==0?operation():management()),bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(i)=>setState(()=>tab=i),destinations:const[NavigationDestination(icon:Icon(Icons.receipt_long),label:'Pedidos'),NavigationDestination(icon:Icon(Icons.analytics_outlined),label:'Gestão')]));}
+ @override Widget build(BuildContext c){if(loading)return const Scaffold(body:Center(child:CircularProgressIndicator()));return Scaffold(appBar:AppBar(backgroundColor:dark,foregroundColor:Colors.white,title:const Row(children:[CircleAvatar(backgroundColor:y,child:Icon(Icons.storefront,color:dark)),SizedBox(width:10),Text('Parceiro Capão Delivery',style:TextStyle(fontWeight:FontWeight.w900))]),actions:[IconButton(tooltip:'Sair',icon:const Icon(Icons.logout_rounded),onPressed:() async {await Supabase.instance.client.auth.signOut();})]),body:SafeArea(child:tab==0?operation():management()),bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(i)=>setState(()=>tab=i),destinations:const[NavigationDestination(icon:Icon(Icons.receipt_long),label:'Pedidos'),NavigationDestination(icon:Icon(Icons.analytics_outlined),label:'Gestão')]));}
 }
 class Stat extends StatelessWidget {
   final String n;
