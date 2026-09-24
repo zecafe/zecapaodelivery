@@ -71,6 +71,11 @@ jobs:
       - name: Dependencias
         working-directory: /tmp/ze_parceiro
         run: flutter pub get
+      - name: Preparar CMake Android
+        run: |
+          rm -rf "$ANDROID_SDK_ROOT/cmake/3.22.1"
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "cmake;3.22.1"
+
       - name: Build APK
         working-directory: /tmp/ze_parceiro
         run: flutter build apk --debug
