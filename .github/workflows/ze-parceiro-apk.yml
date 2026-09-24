@@ -55,7 +55,10 @@ jobs:
           if 'isCoreLibraryDesugaringEnabled = true' not in g:
               g=g.replace('compileOptions {','compileOptions {\n        isCoreLibraryDesugaringEnabled = true',1)
           if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")' not in g:
-              g=g.replace('dependencies {','dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")',1)
+              if 'dependencies {' in g:
+                  g=g.replace('dependencies {','dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")',1)
+              else:
+                  g += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")\n}\n'
           gradle.write_text(g)
           # Notification permission/default sound metadata.
           s=s.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">','<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.VIBRATE" />')
