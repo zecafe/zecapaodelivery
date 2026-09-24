@@ -49,6 +49,14 @@ jobs:
           marker='''            <meta-data\n              android:name="io.flutter.embedding.android.NormalTheme"'''
           intent='''            <intent-filter android:autoVerify="false">\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="zecapao-parceiro" android:host="login-callback" />\n            </intent-filter>\n'''
           s=s.replace(marker, intent+marker)
+          # flutter_local_notifications requires Java 8+ API desugaring.
+          gradle=Path('/tmp/ze_parceiro/android/app/build.gradle.kts')
+          g=gradle.read_text()
+          if 'isCoreLibraryDesugaringEnabled = true' not in g:
+              g=g.replace('compileOptions {','compileOptions {\n        isCoreLibraryDesugaringEnabled = true',1)
+          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")' not in g:
+              g=g.replace('dependencies {','dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")',1)
+          gradle.write_text(g)
           # Notification permission/default sound metadata.
           s=s.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">','<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.VIBRATE" />')
           s=s.replace('<application', '<application')
