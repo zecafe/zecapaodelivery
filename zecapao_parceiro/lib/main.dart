@@ -13,11 +13,17 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  } catch (_) {
+    // Push is optional until Android Firebase configuration is provisioned.
+  }
   const channel=AndroidNotificationChannel('capao_orders_v1','Pedidos',description:'Alertas de novos pedidos',importance:Importance.max,playSound:true,sound:RawResourceAndroidNotificationSound('ze_tum_tim_v1'),enableVibration:true);
   final localNotifications=FlutterLocalNotificationsPlugin();
-  await localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
+  try {
+    await localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
+  } catch (_) {}
   await Supabase.initialize(url:supabaseUrl,publishableKey:supabasePublishableKey);
   runApp(const ZeParceiro());
 }
