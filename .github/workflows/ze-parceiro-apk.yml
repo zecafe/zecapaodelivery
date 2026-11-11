@@ -35,6 +35,19 @@ jobs:
               out.parent.mkdir(parents=True,exist_ok=True)
               src.resize((size,size),Image.Resampling.LANCZOS).save(out)
           PY
+      - name: Habilitar desugaring Android para notificacoes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          gradle = Path('/tmp/ze_parceiro/android/app/build.gradle.kts')
+          source = gradle.read_text()
+          anchor = 'compileOptions {'
+          if anchor not in source:
+              raise SystemExit('Bloco compileOptions nao encontrado no Gradle')
+          source = source.replace(anchor, anchor + '\n        isCoreLibraryDesugaringEnabled = true', 1)
+          source += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+          gradle.write_text(source)
+          PY
       - name: Dependencias
         working-directory: /tmp/ze_parceiro
         run: flutter pub get
