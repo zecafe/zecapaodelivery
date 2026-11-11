@@ -489,9 +489,70 @@ bool pending=false,loading=true; int tab=0; String? accessError; RealtimeChannel
   );
  }
 
- Widget management()=>ListView(padding:const EdgeInsets.all(18),children:[const Text('Gestão',style:TextStyle(fontSize:30,fontWeight:FontWeight.w900)),const SizedBox(height:18),const Card(child:ListTile(leading:CircleAvatar(backgroundColor:y,child:Icon(Icons.calculate,color:dark)),title:Text('CMV e fichas técnicas',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('Insumos, custos, margem e preço ideal'),trailing:Icon(Icons.chevron_right))),const Card(child:ListTile(leading:CircleAvatar(backgroundColor:y,child:Icon(Icons.inventory_2,color:dark)),title:Text('Estoque',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('Entradas, consumo e alertas'),trailing:Icon(Icons.chevron_right)))]);
- @override Widget build(BuildContext c){if(loading)return const Scaffold(body:Center(child:CircularProgressIndicator()));return Scaffold(appBar:AppBar(backgroundColor:dark,foregroundColor:Colors.white,title:const Row(children:[CircleAvatar(backgroundColor:y,child:Icon(Icons.storefront,color:dark)),SizedBox(width:10),Text('Parceiro Capão Delivery',style:TextStyle(fontWeight:FontWeight.w900))]),actions:[IconButton(tooltip:'Sair',icon:const Icon(Icons.logout_rounded),onPressed:() async {await Supabase.instance.client.auth.signOut();})]),body:SafeArea(child:tab==0?operation():management()),bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(i)=>setState(()=>tab=i),destinations:const[NavigationDestination(icon:Icon(Icons.receipt_long),label:'Pedidos'),NavigationDestination(icon:Icon(Icons.analytics_outlined),label:'Gestão')]));}
+ Widget management(BuildContext context)=>ListView(padding:const EdgeInsets.all(18),children:[const Text('Gestão',style:TextStyle(fontSize:30,fontWeight:FontWeight.w900)),const SizedBox(height:18),const Card(child:ListTile(leading:CircleAvatar(backgroundColor:y,child:Icon(Icons.calculate,color:dark)),title:Text('CMV e fichas técnicas',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('Insumos, custos, margem e preço ideal'),trailing:Icon(Icons.chevron_right))),const Card(child:ListTile(leading:CircleAvatar(backgroundColor:y,child:Icon(Icons.inventory_2,color:dark)),title:Text('Estoque',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('Entradas, consumo e alertas'),trailing:Icon(Icons.chevron_right))),const Card(child:ListTile(leading:const CircleAvatar(backgroundColor:y,child:Icon(Icons.privacy_tip_outlined,color:dark)),title:const Text('Privacidade e conta',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:const Text('Solicitar exclusão da conta e dos dados'),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.of(context).push(MaterialPageRoute(builder:(_)=>const AccountDeletionPage()))))]);
+ @override Widget build(BuildContext c){if(loading)return const Scaffold(body:Center(child:CircularProgressIndicator()));return Scaffold(appBar:AppBar(backgroundColor:dark,foregroundColor:Colors.white,title:const Row(children:[CircleAvatar(backgroundColor:y,child:Icon(Icons.storefront,color:dark)),SizedBox(width:10),Text('Parceiro Capão Delivery',style:TextStyle(fontWeight:FontWeight.w900))]),actions:[IconButton(tooltip:'Sair',icon:const Icon(Icons.logout_rounded),onPressed:() async {await Supabase.instance.client.auth.signOut();})]),body:SafeArea(child:tab==0?operation():management(c)),bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(i)=>setState(()=>tab=i),destinations:const[NavigationDestination(icon:Icon(Icons.receipt_long),label:'Pedidos'),NavigationDestination(icon:Icon(Icons.analytics_outlined),label:'Gestão')]));}
 }
+
+class AccountDeletionPage extends StatefulWidget {
+  const AccountDeletionPage({super.key});
+  @override
+  State<AccountDeletionPage> createState() => _AccountDeletionPageState();
+}
+class _AccountDeletionPageState extends State<AccountDeletionPage> {
+  bool sending = false;
+  String? protocol;
+  String? error;
+  Future<void> requestDeletion() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Solicitar exclusão da conta?'),
+        content: const Text('Sua solicitação será registrada para análise. A conta não será apagada imediatamente. Dados necessários para obrigações legais poderão ser conservados conforme a política de privacidade.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirmar solicitação')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() { sending = true; error = null; });
+    try {
+      final response = await Supabase.instance.client.from('account_deletion_requests')
+          .insert({'user_id': user.id, 'app': 'parceiro'})
+          .select('id').single();
+      if (!mounted) return;
+      setState(() => protocol = response['id'].toString());
+    } catch (_) {
+      if (mounted) setState(() => error = 'Não foi possível registrar a solicitação. Tente novamente mais tarde ou entre em contato com carlosright@gmail.com.');
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
+  }
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Privacidade e conta')),
+    body: ListView(padding: const EdgeInsets.all(20), children: [
+      const Text('Exclusão de conta', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 12),
+      const Text('Você pode solicitar a exclusão da sua conta Capão Parceiro e dos dados pessoais associados. A equipe analisará o pedido e informará sobre a conclusão e eventual retenção legal de registros.'),
+      const SizedBox(height: 16),
+      const Text('Contato de privacidade: carlosright@gmail.com'),
+      const SizedBox(height: 24),
+      if (protocol != null) SelectableText('Solicitação registrada. Protocolo: $protocol')
+      else ...[
+        if (error != null) Text(error!, style: const TextStyle(color: Colors.red)),
+        FilledButton.icon(
+          onPressed: sending ? null : requestDeletion,
+          icon: const Icon(Icons.delete_outline),
+          label: Text(sending ? 'Enviando...' : 'Solicitar exclusão da conta'),
+        ),
+      ],
+    ]),
+  );
+}
+
 class Stat extends StatelessWidget {
   final String n;
   final String l;
