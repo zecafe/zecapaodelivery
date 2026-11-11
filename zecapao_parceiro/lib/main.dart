@@ -502,6 +502,27 @@ class _AccountDeletionPageState extends State<AccountDeletionPage> {
   bool sending = false;
   String? protocol;
   String? error;
+  bool checking = true;
+  @override
+  void initState() {
+    super.initState();
+    loadPendingRequest();
+  }
+  Future<void> loadPendingRequest() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      if (mounted) setState(() { checking = false; error = 'Entre na sua conta para continuar.'; });
+      return;
+    }
+    try {
+      final pending = await Supabase.instance.client.from('account_deletion_requests')
+          .select('id').eq('user_id', user.id).eq('app', 'parceiro')
+          .eq('status', 'pending').limit(1).maybeSingle();
+      if (mounted) setState(() { protocol = pending?['id']?.toString(); checking = false; });
+    } catch (_) {
+      if (mounted) setState(() { checking = false; error = 'Não foi possível consultar solicitações anteriores.'; });
+    }
+  }
   Future<void> requestDeletion() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -540,11 +561,12 @@ class _AccountDeletionPageState extends State<AccountDeletionPage> {
       const SizedBox(height: 16),
       const Text('Contato de privacidade: carlosright@gmail.com'),
       const SizedBox(height: 24),
-      if (protocol != null) SelectableText('Solicitação registrada. Protocolo: $protocol')
+      if (checking) const Center(child: CircularProgressIndicator())
+      else if (protocol != null) SelectableText('Solicitação pendente registrada. Protocolo: $protocol')
       else ...[
         if (error != null) Text(error!, style: const TextStyle(color: Colors.red)),
         FilledButton.icon(
-          onPressed: sending ? null : requestDeletion,
+          onPressed: sending || error != null ? null : requestDeletion,
           icon: const Icon(Icons.delete_outline),
           label: Text(sending ? 'Enviando...' : 'Solicitar exclusão da conta'),
         ),
