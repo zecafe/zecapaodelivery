@@ -23,12 +23,126 @@ class ZeActionButton extends StatelessWidget{
  const ZeActionButton({super.key,required this.label,required this.icon,required this.onPressed});
  @override Widget build(BuildContext context)=>Material(color:Colors.transparent,child:InkWell(onTap:onPressed,borderRadius:BorderRadius.circular(16),child:Ink(decoration:BoxDecoration(color:onPressed==null?const Color(0xFFBDB7AA):const Color(0xFF16B96B),borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFF171717),width:2)),child:Container(height:62,padding:const EdgeInsets.symmetric(horizontal:18),child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon),const SizedBox(width:10),Flexible(child:Text(label,textAlign:TextAlign.center,style:const TextStyle(fontSize:14,fontWeight:FontWeight.w900,letterSpacing:1.1)))])))));
 }
-class DriverGate extends StatefulWidget{const DriverGate({super.key});@override State<DriverGate> createState()=>_DriverGateState();}
-class _DriverGateState extends State<DriverGate>{
- bool approved=false,loading=false;String? status;final email=TextEditingController(),cpf=TextEditingController();
- @override void dispose(){email.dispose();cpf.dispose();super.dispose();}
- Future<void> check()async{if(email.text.trim().isEmpty||cpf.text.trim().isEmpty)return;setState(()=>loading=true);try{final d=await Supabase.instance.client.rpc('get_driver_application_status',params:{'p_email':email.text.trim(),'p_cpf':cpf.text.trim()}) as List;if(!mounted)return;final s=d.isEmpty?'none':d.first['status'].toString();setState((){status=s;approved=s=='approved';});}finally{if(mounted)setState(()=>loading=false);}}
- @override Widget build(BuildContext context){if(approved)return const HomePage();return Scaffold(appBar:AppBar(backgroundColor:const Color(0xFF171717),foregroundColor:Colors.white,title:const Text('Entregador Capão Delivery')),body:ListView(padding:const EdgeInsets.all(20),children:[const Text('Quero ser entregador',style:TextStyle(fontSize:28,fontWeight:FontWeight.w900)),const SizedBox(height:8),const Text('Faça seu cadastro. Após a análise do Capão Delivery, seu acesso às entregas será liberado.'),const SizedBox(height:20),if(status==null||status=='none')DriverApplicationForm(onSubmitted:(e,c){email.text=e;cpf.text=c;setState(()=>status='pending');}),if(status=='pending')const Card(child:Padding(padding:EdgeInsets.all(18),child:Text('Cadastro recebido. Estamos analisando seus dados.',style:TextStyle(fontWeight:FontWeight.w800)))),if(status=='rejected'||status=='blocked')const Card(child:Padding(padding:EdgeInsets.all(18),child:Text('Seu cadastro precisa de revisão. Entre em contato com o Capão Delivery.',style:TextStyle(fontWeight:FontWeight.w800)))),if(status!=null)...[const SizedBox(height:20),TextField(controller:email,keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'E-mail',border:OutlineInputBorder())),const SizedBox(height:10),TextField(controller:cpf,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'CPF',border:OutlineInputBorder())),const SizedBox(height:10),ZeActionButton(label:loading?'CONSULTANDO...':'CONSULTAR SITUAÇÃO',icon:Icons.fact_check_outlined,onPressed:loading?null:check)]]));}
+class DriverGate extends StatefulWidget {
+  const DriverGate({super.key});
+  @override State<DriverGate> createState() => _DriverGateState();
+}
+class _DriverGateState extends State<DriverGate> {
+  final email = TextEditingController(), code = TextEditingController();
+  bool loading = false, codeSent = false, showRegistration = false, approved = false;
+  String? status, message;
+  StreamSubscription<AuthState>? authSubscription;
+
+  @override void initState() {
+    super.initState();
+    authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((_) => refreshAccess());
+    refreshAccess();
+  }
+  @override void dispose() {
+    authSubscription?.cancel();
+    email.dispose(); code.dispose(); super.dispose();
+  }
+  Future<void> refreshAccess() async {
+    if (!mounted) return;
+    final client = Supabase.instance.client;
+    if (client.auth.currentUser == null) {
+      setState(() { approved = false; status = null; });
+      return;
+    }
+    setState(() { loading = true; message = null; });
+    try {
+      // Server-side RPC must verify auth.uid() and matching verified email.
+      final result = await client.rpc('driver_claim_and_status');
+      final rows = result as List;
+      final next = rows.isEmpty ? 'none' : rows.first['status'].toString();
+      if (mounted) setState(() { status = next; approved = next == 'approved'; });
+    } catch (_) {
+      if (mounted) setState(() {
+        approved = false;
+        message = 'Não foi possível confirmar sua autorização. Tente novamente.';
+      });
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+  Future<void> sendCode() async {
+    if (!email.text.contains('@')) {
+      setState(() => message = 'Informe seu e-mail cadastrado.');
+      return;
+    }
+    setState(() { loading = true; message = null; });
+    try {
+      await Supabase.instance.client.auth.signInWithOtp(email: email.text.trim(), shouldCreateUser: true);
+      if (mounted) setState(() { codeSent = true; message = 'Confira seu e-mail e informe o código recebido.'; });
+    } catch (_) {
+      if (mounted) setState(() => message = 'Não foi possível enviar o código. Tente novamente.');
+    } finally { if (mounted) setState(() => loading = false); }
+  }
+  Future<void> verifyCode() async {
+    if (code.text.trim().length != 6) {
+      setState(() => message = 'Informe o código de seis dígitos.');
+      return;
+    }
+    setState(() { loading = true; message = null; });
+    try {
+      await Supabase.instance.client.auth.verifyOTP(
+        email: email.text.trim(), token: code.text.trim(), type: OtpType.email,
+      );
+      await refreshAccess();
+    } catch (_) {
+      if (mounted) setState(() => message = 'Código inválido ou expirado. Solicite outro.');
+    } finally { if (mounted) setState(() => loading = false); }
+  }
+  Future<void> signOut() async {
+    await Supabase.instance.client.auth.signOut();
+    if (mounted) setState(() { approved = false; status = null; codeSent = false; });
+  }
+  @override Widget build(BuildContext context) {
+    if (approved) return HomePage(onSignOut: signOut);
+    final signedIn = Supabase.instance.client.auth.currentUser != null;
+    return Scaffold(
+      appBar: AppBar(backgroundColor: const Color(0xFF171717), foregroundColor: Colors.white,
+        title: const Text('Entregador Capão Delivery')),
+      body: ListView(padding: const EdgeInsets.all(20), children: [
+        const Text('Capão Entregador', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 10),
+        if (loading) const LinearProgressIndicator(),
+        if (message != null) Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Text(message!)),
+        if (signedIn) ...[
+          Text(status == 'pending' ? 'Seu cadastro está em análise.' :
+               status == 'blocked' || status == 'rejected' ? 'Seu cadastro precisa de revisão.' :
+               status == 'none' ? 'Nenhum cadastro vinculado a este e-mail.' :
+               'Verificando sua aprovação...'),
+          const SizedBox(height: 16),
+          ZeActionButton(label: 'ATUALIZAR SITUAÇÃO', icon: Icons.refresh, onPressed: loading ? null : refreshAccess),
+          TextButton(onPressed: signOut, child: const Text('Sair da conta')),
+        ] else if (showRegistration) ...[
+          const Text('Quero ser entregador', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          DriverApplicationForm(onSubmitted: (e, c) {
+            email.text = e;
+            setState(() { showRegistration = false; message = 'Cadastro enviado. Aguarde a aprovação e entre com seu e-mail.'; });
+          }),
+          TextButton(onPressed: () => setState(() => showRegistration = false), child: const Text('Já sou entregador')),
+        ] else ...[
+          const Text('Já sou entregador: entre com o e-mail utilizado no cadastro.'),
+          const SizedBox(height: 16),
+          TextField(controller: email, keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(labelText: 'E-mail cadastrado', border: OutlineInputBorder())),
+          const SizedBox(height: 12),
+          if (codeSent) ...[
+            TextField(controller: code, keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Código recebido por e-mail', border: OutlineInputBorder())),
+            const SizedBox(height: 12),
+            ZeActionButton(label: 'CONFIRMAR CÓDIGO', icon: Icons.verified_user, onPressed: loading ? null : verifyCode),
+            TextButton(onPressed: loading ? null : sendCode, child: const Text('Reenviar código')),
+          ] else ZeActionButton(label: 'RECEBER CÓDIGO', icon: Icons.mail_outline, onPressed: loading ? null : sendCode),
+          const SizedBox(height: 16),
+          TextButton(onPressed: () => setState(() => showRegistration = true), child: const Text('Quero ser entregador: fazer cadastro')),
+        ],
+      ]),
+    );
+  }
 }
 class DriverApplicationForm extends StatefulWidget{final void Function(String,String) onSubmitted;const DriverApplicationForm({super.key,required this.onSubmitted});@override State<DriverApplicationForm> createState()=>_DriverApplicationFormState();}
 class _DriverApplicationFormState extends State<DriverApplicationForm>{
@@ -37,7 +151,7 @@ class _DriverApplicationFormState extends State<DriverApplicationForm>{
  Future<void> submit()async{if(!terms||[fullName,whats,email,cpf,birth,locality,pix].any((x)=>x.text.trim().isEmpty)){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Preencha os campos obrigatórios e aceite os termos.')));return;}final p=birth.text.trim().split('/');if(p.length!=3){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Use nascimento no formato DD/MM/AAAA.')));return;}final date=p[2]+'-'+p[1].padLeft(2,'0')+'-'+p[0].padLeft(2,'0');setState(()=>sending=true);try{await Supabase.instance.client.rpc('submit_driver_application',params:{'p_full_name':fullName.text.trim(),'p_whatsapp':whats.text.trim(),'p_email':email.text.trim(),'p_cpf':cpf.text.trim(),'p_birth_date':date,'p_locality':locality.text.trim(),'p_vehicle_type':vehicle,'p_vehicle_plate':plate.text.trim(),'p_availability':availability.text.trim(),'p_pix_key':pix.text.trim()});if(mounted)widget.onSubmitted(email.text.trim(),cpf.text.trim());}catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Não foi possível enviar. Confira os dados ou se já existe cadastro com este CPF.')));}finally{if(mounted)setState(()=>sending=false);}}
  @override Widget build(BuildContext context)=>Column(children:[TextField(controller:fullName,decoration:const InputDecoration(labelText:'Nome completo *',border:OutlineInputBorder())),const SizedBox(height:10),TextField(controller:whats,keyboardType:TextInputType.phone,decoration:const InputDecoration(labelText:'WhatsApp *',border:OutlineInputBorder())),const SizedBox(height:10),TextField(controller:email,keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'E-mail *',border:OutlineInputBorder())),const SizedBox(height:10),TextField(controller:cpf,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'CPF *',border:OutlineInputBorder())),const SizedBox(height:10),TextField(controller:birth,keyboardType:TextInputType.datetime,decoration:const InputDecoration(labelText:'Nascimento DD/MM/AAAA *',border:OutlineInputBorder())),const SizedBox(height:10),TextField(controller:locality,decoration:const InputDecoration(labelText:'Cidade / localidade *',border:OutlineInputBorder())),const SizedBox(height:10),DropdownButtonFormField<String>(initialValue:vehicle,decoration:const InputDecoration(labelText:'Veículo',border:OutlineInputBorder()),items:const [DropdownMenuItem(value:'moto',child:Text('Moto')),DropdownMenuItem(value:'bicicleta',child:Text('Bicicleta')),DropdownMenuItem(value:'carro',child:Text('Carro')),DropdownMenuItem(value:'outro',child:Text('Outro'))],onChanged:(v)=>setState(()=>vehicle=v??'moto')),const SizedBox(height:10),TextField(controller:plate,decoration:const InputDecoration(labelText:'Placa, se aplicável',border:OutlineInputBorder())),const SizedBox(height:10),TextField(controller:availability,decoration:const InputDecoration(labelText:'Disponibilidade',border:OutlineInputBorder())),const SizedBox(height:10),TextField(controller:pix,decoration:const InputDecoration(labelText:'Chave Pix *',border:OutlineInputBorder())),CheckboxListTile(contentPadding:EdgeInsets.zero,value:terms,onChanged:(v)=>setState(()=>terms=v??false),title:const Text('Confirmo que os dados são verdadeiros e aceito os termos para entregadores.')),ZeActionButton(label:sending?'ENVIANDO...':'ENVIAR CADASTRO',icon:Icons.send_rounded,onPressed:sending?null:submit)]);
 }
-class HomePage extends StatefulWidget{const HomePage({super.key});@override State<HomePage> createState()=>_HomePageState();}
+class HomePage extends StatefulWidget{final Future<void> Function() onSignOut;const HomePage({super.key,required this.onSignOut});@override State<HomePage> createState()=>_HomePageState();}
 class _HomePageState extends State<HomePage>{
  bool online=false,busy=false,fetching=false; Map<String,dynamic>? offer; String? deliveryStatus; Timer? poller; final name=TextEditingController(text:'Zé Entregador');
  @override void dispose(){poller?.cancel();name.dispose();super.dispose();}
@@ -69,7 +183,7 @@ class _HomePageState extends State<HomePage>{
   final short=id.length>8?id.substring(0,8).toUpperCase():id.toUpperCase();
   final action=deliveryStatus==null?'ACEITAR ENTREGA':deliveryStatus=='accepted'?'RETIREI O PEDIDO':deliveryStatus=='picked_up'?'CONFIRMAR ENTREGA':'ENTREGA CONCLUÍDA';
   return Scaffold(appBar:AppBar(backgroundColor:const Color(0xFF171717),foregroundColor:Colors.white,title:const Row(children:[CircleAvatar(backgroundColor:Color(0xFFF4C430),child:Icon(Icons.sports_motorsports,color:Color(0xFF171717))),SizedBox(width:12),Text('Entregador Capão Delivery',style:TextStyle(fontWeight:FontWeight.w900,fontSize:16))])),body:SafeArea(child:ListView(padding:const EdgeInsets.all(20),children:[
-   const Text('Entregador Capão Delivery',style:TextStyle(fontSize:28,fontWeight:FontWeight.w900)),const SizedBox(height:16),
+   const Text('Entregador Capão Delivery',style:TextStyle(fontSize:28,fontWeight:FontWeight.w900)),TextButton.icon(onPressed:widget.onSignOut,icon:const Icon(Icons.logout),label:const Text('SAIR DA CONTA')),const SizedBox(height:16),
    Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:online?const Color(0xFF16B96B):const Color(0xFF171717),borderRadius:BorderRadius.circular(26)),child:Column(children:[Icon(online?Icons.delivery_dining:Icons.power_settings_new,size:54,color:online?const Color(0xFF171717):const Color(0xFF16B96B)),Text(online?'ONLINE':'OFFLINE',style:TextStyle(color:online?const Color(0xFF171717):Colors.white,fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:10),ZeActionButton(label:online?'ENCERRAR TURNO':'INICIAR TURNO',icon:online?Icons.pause_circle:Icons.play_circle,onPressed:toggle)])),
    if(online)...[const SizedBox(height:14),TextField(controller:name,decoration:const InputDecoration(labelText:'Nome do entregador',border:OutlineInputBorder())),const SizedBox(height:14),
     if(offer==null)Card(child:Padding(padding:const EdgeInsets.all(20),child:Column(children:[const Text('Nenhuma entrega disponível agora.',style:TextStyle(fontWeight:FontWeight.w800)),const SizedBox(height:10),TextButton.icon(onPressed:loadOffer,icon:const Icon(Icons.refresh),label:const Text('ATUALIZAR'))])))
