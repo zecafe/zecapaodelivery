@@ -1,0 +1,100 @@
+name: Ze Entregador 0.2.1 Test AAB
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Entregador source
+        uses: actions/checkout@v4
+        with:
+          ref: fix/entregador-auth-021
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.9'
+          channel: stable
+      - name: Create Android app and launcher icon
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter create /tmp/ze_entregador --platforms=android --org com.zecapao --project-name ze_entregador
+          cp zecapao_entregador/pubspec.yaml /tmp/ze_entregador/pubspec.yaml
+          cp zecapao_entregador/lib/main.dart /tmp/ze_entregador/lib/main.dart
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq imagemagick
+          for spec in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            density="${spec%%:*}"
+            size="${spec##*:}"
+            mkdir -p "/tmp/ze_entregador/android/app/src/main/res/mipmap-$density"
+            convert zecapao_entregador/assets/branding/entregador_icon.png -trim +repage -resize "$((size*116/100))x$((size*116/100))" -gravity center -background none -extent "${size}x${size}" "/tmp/ze_entregador/android/app/src/main/res/mipmap-$density/ic_launcher.png"
+          done
+          rm -f /tmp/ze_entregador/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          rm -f /tmp/ze_entregador/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+          find /tmp/ze_entregador/android/app/src/main/res -name 'ic_launcher_foreground*' -delete || true
+          sed -i 's/android:roundIcon="@mipmap\/ic_launcher_round"//g' /tmp/ze_entregador/android/app/src/main/AndroidManifest.xml
+      - name: Restore upload keystore and configure release signing
+        working-directory: /tmp/ze_entregador
+        env:
+          ENTREGADOR_KEYSTORE_BASE64: ${{ secrets.ENTREGADOR_KEYSTORE_BASE64 }}
+          ENTREGADOR_KEYSTORE_PASSWORD: ${{ secrets.ENTREGADOR_KEYSTORE_PASSWORD }}
+          ENTREGADOR_KEY_ALIAS: ${{ secrets.ENTREGADOR_KEY_ALIAS }}
+          ENTREGADOR_KEY_PASSWORD: ${{ secrets.ENTREGADOR_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in ENTREGADOR_KEYSTORE_BASE64 ENTREGADOR_KEYSTORE_PASSWORD ENTREGADOR_KEY_ALIAS ENTREGADOR_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "::error::Missing GitHub Actions secret: $name"; exit 1; fi
+          done
+          python3 - <<'PY'
+          import base64, os, re
+          from pathlib import Path
+          encoded = os.environ['ENTREGADOR_KEYSTORE_BASE64']
+          # Accept both raw base64 and Windows certutil PEM-like BEGIN/END headers.
+          lines = [line.strip() for line in encoded.splitlines() if line.strip() and not line.startswith('-----')]
+          data = base64.b64decode(''.join(lines), validate=True)
+          if not data: raise ValueError('Empty keystore')
+          Path('android/app/entregador-upload.jks').write_bytes(data)
+          p = Path('android/app/build.gradle.kts')
+          s = p.read_text()
+          s += """
+          android {
+              signingConfigs {
+                  create("entregadorRelease") {
+                      storeFile = file("entregador-upload.jks")
+                      storePassword = System.getenv("ENTREGADOR_KEYSTORE_PASSWORD")
+                      keyAlias = System.getenv("ENTREGADOR_KEY_ALIAS")
+                      keyPassword = System.getenv("ENTREGADOR_KEY_PASSWORD")
+                  }
+              }
+              buildTypes {
+                  getByName("release") {
+                      signingConfig = signingConfigs.getByName("entregadorRelease")
+                  }
+              }
+          }
+          """
+          p.write_text(s)
+          PY
+      - name: Build signed Play AAB
+        working-directory: /tmp/ze_entregador
+        env:
+          ENTREGADOR_KEYSTORE_PASSWORD: ${{ secrets.ENTREGADOR_KEYSTORE_PASSWORD }}
+          ENTREGADOR_KEY_ALIAS: ${{ secrets.ENTREGADOR_KEY_ALIAS }}
+          ENTREGADOR_KEY_PASSWORD: ${{ secrets.ENTREGADOR_KEY_PASSWORD }}
+        run: |
+          flutter pub get
+          flutter build appbundle --release
+          jarsigner -verify build/app/outputs/bundle/release/app-release.aab
+      - name: Upload signed AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: ze-entregador-021-test-aab
+          path: /tmp/ze_entregador/build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
